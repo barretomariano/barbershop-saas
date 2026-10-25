@@ -19,8 +19,17 @@ Un negocio nunca puede quedarse sin OWNER activo. Las membresías no se borran: 
 No hay registro público. Un negocio se crea manualmente con `private.admin_create_business(...)` desde el SQL Editor de Supabase.
 Un usuario que inicia sesión sin membresía no ve ningún dato.
 
-## Cálculo financiero
-PLANIFICADO (Etapa 3). Comisión y totales se calcularán en el servidor y cada venta guardará una copia de la tasa aplicada.
+## Ventas y comisiones
+Estado: IMPLEMENTADO en `supabase/migrations/20261025000002_ventas_y_comisiones.sql`. Verificado en Postgres local (30 chequeos en `supabase/tests/rls_ventas_test.sql`). NO verificado todavía sobre Supabase real.
+- Las ventas se crean solo con `register_sale` y se anulan solo con `cancel_sale`. No hay insert, update ni delete directo.
+- Cálculo en la base. Modelos por barbero: PERCENT (porcentaje de cada venta), CHAIR_RENT (el barbero se queda con el 100%; el alquiler fijo se contabiliza aparte, PLANIFICADO) y SALARY (0% por venta; sueldo aparte, PLANIFICADO).
+- Cada venta guarda una copia del modelo y porcentaje usados; cambiar la comisión no altera ventas anteriores.
+- Redondeo al peso entero: barbero = redondeo(monto x %), local = resto, la suma siempre cierra.
+- Anti-duplicados: cada venta lleva una clave única (`idempotency_key`); repetirla devuelve la misma venta.
+- Anulación: solo OWNER/MANAGER, con motivo. Una venta anulada no se reactiva.
+- Un barbero solo registra y ve sus propias ventas. OWNER y MANAGER ven todas las del negocio.
+- Un barbero no puede vender hasta que el OWNER configure su comisión.
+- Pendiente: montos de alquiler de silla y sueldos, totales por período, gastos.
 
 ## Suscripción
 `businesses.subscription_status` existe (trialing, active, suspended, canceled) pero todavía no se aplica en ninguna regla.

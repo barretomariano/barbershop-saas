@@ -20,4 +20,4 @@ Next.js + TypeScript (App Router), Tailwind, shadcn/ui, Supabase (Postgres, Auth
 `npm run dev`, `npm run lint`, `npm run test`, `npm run build`, `npm run typecheck`
 
 ## Etapa actual
-Etapa 2 (base de datos, membresías y RLS): migración escrita y probada en un Postgres local con auth simulada. Pendiente: aplicarla en Supabase y configurar login con Google. Siguiente: Etapa 3 (ventas y comisiones).
+Etapa 3 (ventas y comisiones): migración 2 escrita y probada en un Postgres local con auth simulada. Pendiente: aplicarla en Supabase, y construir las pantallas (Etapa 4). El login con Google se agrega junto con las pantallas.
