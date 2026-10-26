@@ -10,3 +10,13 @@ export function formatearARS(monto: number): string {
     maximumFractionDigits: 0,
   }).format(monto);
 }
+
+export function formatearHora(iso: string): string {
+  return new Intl.DateTimeFormat("es-AR", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(iso));
+}

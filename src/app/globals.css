@@ -21,3 +21,55 @@ body {
   color: var(--texto);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
+
+:root { --linea: #d9d6cd; }
+@media (prefers-color-scheme: dark) { :root { --linea: #3a3935; } }
+
+.texto-suave { color: var(--suave); }
+
+.campo {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--linea);
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  font-size: 16px;
+}
+.campo:focus-visible, .chip:focus-visible, .boton:focus-visible, .boton-chico:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 2px;
+}
+
+.boton {
+  min-height: 52px;
+  border-radius: 12px;
+  background: var(--acento);
+  color: var(--fondo);
+  font-size: 17px;
+  font-weight: 600;
+}
+.boton:disabled { opacity: 0.45; }
+
+.boton-chico {
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 10px;
+  background: var(--acento);
+  color: var(--fondo);
+  font-weight: 600;
+}
+
+.chip {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--linea);
+  border-radius: 999px;
+  font-size: 15px;
+}
+.chip-activo {
+  background: var(--acento);
+  border-color: var(--acento);
+  color: var(--fondo);
+}

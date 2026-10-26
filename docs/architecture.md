@@ -33,3 +33,13 @@ Estado: IMPLEMENTADO en `supabase/migrations/20261025000002_ventas_y_comisiones.
 
 ## Suscripción
 `businesses.subscription_status` existe (trialing, active, suspended, canceled) pero todavía no se aplica en ninguna regla.
+
+## Pantallas (Etapa 4)
+Estado: escritas; compilan, pasan lint, tipos y tests de lógica (formato de montos, porcentajes, períodos en hora argentina). NO probadas contra el Supabase real ni en un navegador.
+- Ingreso por email y contraseña (Supabase Auth). Login con Google: PLANIFICADO.
+- Vender: servicio, monto, medio de pago, barbero (encargado/dueño). Clave anti-duplicado por intento.
+- Resumen: hoy, últimos 7 días y este mes. El barbero ve lo suyo; dueño y encargado ven todo. Anular con motivo.
+- Ajustes: servicios (dueño y encargado) y comisión por barbero (solo dueño).
+- Los permisos reales los aplica la base (RLS); las pantallas solo ocultan lo que el usuario no puede usar.
+- Los totales mostrados se suman en el navegador a partir de montos ya calculados por la base. El cálculo de comisión nunca se hace en el navegador.
+- Límite actual: se muestran hasta 500 ventas por período.

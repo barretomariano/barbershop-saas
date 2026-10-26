@@ -3,8 +3,8 @@
 Aplicación web (PWA) multi-tenant para gestionar **ventas y comisiones** de barberías en Argentina.
 No es una app de turnos ni de captación de clientes.
 
-## Estado actual: Etapa 1 (entorno y repositorio)
-Funciona: la app arranca y muestra una página de estado. No hay login, base de datos ni funciones de negocio todavía.
+## Estado actual: Etapa 4 (pantallas)
+Ingreso, cargar ventas, resumen y ajustes. Requiere las variables de Supabase (ver `.env.example`). Sin ellas, la app muestra un aviso de que falta conectarla.
 
 ## Stack
 Next.js + TypeScript (App Router), Tailwind, Zod, Vitest. Más adelante: Supabase (Postgres, Auth con Google, RLS) y Playwright.
