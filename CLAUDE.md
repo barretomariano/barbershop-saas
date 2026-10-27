@@ -11,7 +11,7 @@ Next.js + TypeScript (App Router), Tailwind, shadcn/ui, Supabase (Postgres, Auth
 - Los cálculos de dinero y los permisos se hacen en servidor/base de datos, nunca se confía en valores del navegador.
 - Montos en ARS como enteros. Interfaz en español argentino.
 - Roles por negocio: OWNER, MANAGER, BARBER.
-- Sin secretos en el repo. Solo `.env.example` con valores vacíos. La clave `service_role` nunca llega al navegador.
+- Sin secretos en el repo. `.env.example` va con valores vacíos. Excepción aprobada por el dueño: `.env.production` tiene solo la URL y la clave PUBLISHABLE de Supabase (públicas por diseño) para que Cloudflare compile sin configurar variables. La clave `service_role` nunca va al repo ni al navegador.
 - No activar planes pagos, dominios ni facturación sin aprobación explícita del dueño del proyecto.
 - No declarar algo como terminado sin haberlo ejecutado y verificado.
 - No force-push, no borrar datos ni repos sin aprobación.
