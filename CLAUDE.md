@@ -20,4 +20,6 @@ Next.js + TypeScript (App Router), Tailwind, shadcn/ui, Supabase (Postgres, Auth
 `npm run dev`, `npm run lint`, `npm run test`, `npm run build`, `npm run typecheck`
 
 ## Etapa actual
-Etapa 4 (pantallas): ingreso con email y contraseña, cargar ventas, resumen por período y ajustes (servicios y comisiones). Compila y pasa lint y tests, pero NO se probó contra el Supabase real todavía. Pendiente: variables de entorno, hosting para verla online, login con Google, pruebas con el piloto.
+Etapa 5: app completa para el primer cliente. Incluye ingreso con email y contraseña, ventas, resumen, gastos (solo dueño y encargado), ajustes (servicios y comisiones), PWA instalable y publicación estática para Cloudflare (`output: "export"`, ver `docs/publicar-en-cloudflare.md`).
+Verificado: lint, tipos, tests de lógica y build; 68 chequeos de seguridad SQL en Postgres local (17 + 30 + 21).
+NO verificado todavía: contra el Supabase real ni en un navegador. Pendiente: aplicar la migración 3 en Supabase, publicar en Cloudflare, login con Google, pruebas con el primer cliente.

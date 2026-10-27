@@ -44,3 +44,24 @@ export interface Venta {
   status: "VALID" | "CANCELED";
   cancel_reason: string | null;
 }
+
+export type CategoriaGasto = "ALQUILER" | "SERVICIOS" | "INSUMOS" | "SUELDOS" | "IMPUESTOS" | "OTROS";
+
+export const CATEGORIAS_GASTO: { valor: CategoriaGasto; etiqueta: string }[] = [
+  { valor: "ALQUILER", etiqueta: "Alquiler" },
+  { valor: "SERVICIOS", etiqueta: "Luz, agua, internet" },
+  { valor: "INSUMOS", etiqueta: "Insumos" },
+  { valor: "SUELDOS", etiqueta: "Sueldos" },
+  { valor: "IMPUESTOS", etiqueta: "Impuestos" },
+  { valor: "OTROS", etiqueta: "Otros" },
+];
+
+export interface Gasto {
+  id: string;
+  category: CategoriaGasto;
+  description: string | null;
+  amount: number;
+  spent_at: string;
+  status: "VALID" | "CANCELED";
+  cancel_reason: string | null;
+}

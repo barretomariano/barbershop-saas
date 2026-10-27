@@ -8,8 +8,9 @@ import Login from "@/components/Login";
 import Vender from "@/components/Vender";
 import Resumen from "@/components/Resumen";
 import Ajustes from "@/components/Ajustes";
+import Gastos from "@/components/Gastos";
 
-type Pestana = "vender" | "resumen" | "ajustes";
+type Pestana = "vender" | "resumen" | "gastos" | "ajustes";
 const COLUMNAS = "id,business_id,user_id,role,display_name,active,commission_model,commission_bps,commission_configured";
 
 export default function Inicio() {
@@ -65,7 +66,7 @@ function Panel({ userId }: { userId: string }) {
   const pestanas: { id: Pestana; texto: string }[] = [
     { id: "vender", texto: "Vender" },
     { id: "resumen", texto: "Resumen" },
-    ...(yo.role !== "BARBER" ? [{ id: "ajustes" as Pestana, texto: "Ajustes" }] : []),
+    ...(yo.role !== "BARBER" ? [{ id: "gastos" as Pestana, texto: "Gastos" }, { id: "ajustes" as Pestana, texto: "Ajustes" }] : []),
   ];
 
   return (
@@ -87,6 +88,7 @@ function Panel({ userId }: { userId: string }) {
 
       {pestana === "vender" && <Vender yo={yo} barberos={barberos} />}
       {pestana === "resumen" && <Resumen yo={yo} equipo={equipo} />}
+      {pestana === "gastos" && yo.role !== "BARBER" && <Gastos yo={yo} />}
       {pestana === "ajustes" && yo.role !== "BARBER" && <Ajustes yo={yo} equipo={equipo} onCambio={cargar} />}
     </main>
   );
