@@ -43,3 +43,14 @@ Estado: escritas; compilan, pasan lint, tipos y tests de lógica (formato de mon
 - Los permisos reales los aplica la base (RLS); las pantallas solo ocultan lo que el usuario no puede usar.
 - Los totales mostrados se suman en el navegador a partir de montos ya calculados por la base. El cálculo de comisión nunca se hace en el navegador.
 - Límite actual: se muestran hasta 500 ventas por período.
+
+## Gastos (Etapa 5)
+Estado: IMPLEMENTADO en `supabase/migrations/20261027000003_gastos.sql`. Verificado en Postgres local (21 chequeos en `supabase/tests/rls_gastos_test.sql`). NO verificado todavía sobre Supabase real.
+- Categorías: alquiler, servicios, insumos, sueldos, impuestos, otros. Montos en ARS enteros.
+- Solo OWNER y MANAGER ven, cargan y anulan gastos; un BARBER no los ve.
+- Se registran con `register_expense` y se anulan con `cancel_expense` (con motivo). No se editan ni se borran. Clave anti-duplicado igual que en ventas.
+- La pantalla muestra "queda en el local" = parte del local en ventas del período − gastos válidos (suma de valores ya calculados por la base).
+- Pendiente: montos fijos de alquiler de silla y sueldos por barbero.
+
+## Publicación
+Exportación estática (`output: "export"`) + Cloudflare Pages. PWA: `public/manifest.webmanifest` y `public/sw.js` (no guarda datos de Supabase).
