@@ -5,6 +5,7 @@ import { getSupabase } from "@/lib/supabase";
 import { formatearARS } from "@/lib/dinero";
 import { parsearMonto, porcentajeABps } from "@/lib/validacion";
 import type { ModeloComision, Membresia, Servicio } from "@/lib/tipos";
+import Equipo from "@/components/Equipo";
 
 interface Props { yo: Membresia; equipo: Membresia[]; onCambio: () => void }
 
@@ -20,11 +21,14 @@ export default function Ajustes({ yo, equipo, onCambio }: Props) {
     <div className="flex flex-col gap-8">
       <Servicios yo={yo} />
       {esOwner ? (
-        <section className="flex flex-col gap-4">
-          <h2 className="font-medium">Comisión de cada barbero</h2>
-          {equipo.filter((m) => m.role === "BARBER").map((m) => <FilaComision key={m.id} m={m} onCambio={onCambio} />)}
-          {equipo.filter((m) => m.role === "BARBER").length === 0 && <p className="texto-suave text-sm">Todavía no hay barberos en el equipo.</p>}
-        </section>
+        <>
+          <Equipo negocio={yo.business_id} onCambio={onCambio} />
+          <section className="flex flex-col gap-4">
+            <h2 className="font-medium">Comisión de cada barbero</h2>
+            {equipo.filter((m) => m.role === "BARBER").map((m) => <FilaComision key={m.id} m={m} onCambio={onCambio} />)}
+            {equipo.filter((m) => m.role === "BARBER").length === 0 && <p className="texto-suave text-sm">Todavía no hay barberos en el equipo.</p>}
+          </section>
+        </>
       ) : (
         <p className="texto-suave text-sm">Las comisiones las configura el dueño.</p>
       )}

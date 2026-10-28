@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { getSupabase } from "@/lib/supabase";
+import { aEmailDeAcceso } from "@/lib/usuario";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -15,7 +16,7 @@ export default function Login() {
     setEnviando(true);
     setError(null);
     try {
-      const { error: e } = await getSupabase().auth.signInWithPassword({ email: email.trim(), password: clave });
+      const { error: e } = await getSupabase().auth.signInWithPassword({ email: aEmailDeAcceso(email), password: clave });
       if (e) setError("Email o contraseña incorrectos.");
     } catch {
       setError("No pudimos conectar. Revisá tu conexión e intentá de nuevo.");
@@ -29,8 +30,8 @@ export default function Login() {
       <form onSubmit={ingresar} className="flex flex-col gap-5">
         <h1 className="text-3xl font-semibold tracking-tight">Ingresar</h1>
         <label className="flex flex-col gap-1 text-sm">
-          Email
-          <input className="campo" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          Email o usuario
+          <input className="campo" type="text" autoComplete="username" autoCapitalize="none" spellCheck={false} value={email} onChange={(e) => setEmail(e.target.value)} />
         </label>
         <label className="flex flex-col gap-1 text-sm">
           Contraseña
