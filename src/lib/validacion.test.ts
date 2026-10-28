@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parsearMonto, porcentajeABps } from "./validacion";
+import { explicarMontoInvalido, parsearMonto, porcentajeABps } from "./validacion";
 import { rangoPeriodo } from "./periodos";
 
 describe("parsearMonto", () => {
@@ -12,6 +12,36 @@ describe("parsearMonto", () => {
     expect(parsearMonto("0")).toBeNull();
     expect(parsearMonto("1234567890")).toBeNull();
     expect(parsearMonto("abc")).toBeNull();
+  });
+});
+
+describe("parsearMonto: centavos y signos", () => {
+  it("rechaza centavos en vez de leerlos como pesos de más", () => {
+    expect(parsearMonto("1.500,50")).toBeNull();
+    expect(parsearMonto("1500,50")).toBeNull();
+    expect(parsearMonto("12.5")).toBeNull();
+    expect(parsearMonto("8000,5")).toBeNull();
+  });
+  it("sigue aceptando separadores de miles", () => {
+    expect(parsearMonto("1.500")).toBe(1500);
+    expect(parsearMonto("1,500")).toBe(1500);
+    expect(parsearMonto("1.234.567")).toBe(1234567);
+    expect(parsearMonto(" $ 12.500 ")).toBe(12500);
+  });
+  it("rechaza montos negativos", () => {
+    expect(parsearMonto("-500")).toBeNull();
+  });
+});
+
+describe("explicarMontoInvalido", () => {
+  it("no molesta si está vacío o es válido", () => {
+    expect(explicarMontoInvalido("")).toBeNull();
+    expect(explicarMontoInvalido("  ")).toBeNull();
+    expect(explicarMontoInvalido("12.500")).toBeNull();
+  });
+  it("explica cuando hay algo escrito pero no sirve", () => {
+    expect(explicarMontoInvalido("1.500,50")).toContain("pesos enteros");
+    expect(explicarMontoInvalido("abc")).toContain("pesos enteros");
   });
 });
 

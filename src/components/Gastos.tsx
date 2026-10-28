@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getSupabase } from "@/lib/supabase";
 import { formatearARS, formatearHora } from "@/lib/dinero";
 import { rangoPeriodo, type Periodo } from "@/lib/periodos";
-import { parsearMonto } from "@/lib/validacion";
+import { explicarMontoInvalido, parsearMonto } from "@/lib/validacion";
 import { CATEGORIAS_GASTO, type CategoriaGasto, type Gasto, type Membresia, type Venta } from "@/lib/tipos";
 
 interface Props { yo: Membresia }
@@ -92,6 +92,7 @@ export default function Gastos({ yo }: Props) {
           {CATEGORIAS_GASTO.map((c) => <option key={c.valor} value={c.valor}>{c.etiqueta}</option>)}
         </select>
         <input className="campo" inputMode="numeric" placeholder="Monto en pesos" value={monto} onChange={(e) => setMonto(e.target.value)} />
+        {explicarMontoInvalido(monto) && <p role="alert" className="text-sm text-red-600">{explicarMontoInvalido(monto)}</p>}
         <input className="campo" placeholder="Detalle (opcional)" maxLength={200} value={detalle} onChange={(e) => setDetalle(e.target.value)} />
         <button className="boton" disabled={!montoNum || enviando} onClick={guardar}>
           {enviando ? "Guardando…" : montoNum ? `Guardar ${formatearARS(montoNum)}` : "Guardar gasto"}

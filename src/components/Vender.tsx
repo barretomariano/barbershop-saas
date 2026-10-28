@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { getSupabase } from "@/lib/supabase";
 import { formatearARS } from "@/lib/dinero";
-import { parsearMonto } from "@/lib/validacion";
+import { explicarMontoInvalido, parsearMonto } from "@/lib/validacion";
 import { MEDIOS_PAGO, type MedioPago, type Membresia, type Servicio } from "@/lib/tipos";
 
 interface Props { yo: Membresia; barberos: Membresia[] }
@@ -95,6 +95,7 @@ export default function Vender({ yo, barberos }: Props) {
         <input className="campo text-2xl" inputMode="numeric" placeholder="$ 0" value={monto}
           onChange={(e) => { setMonto(e.target.value); setServicio(null); setResultado(null); }} />
         {montoNum && <span className="texto-suave">{formatearARS(montoNum)}</span>}
+        {explicarMontoInvalido(monto) && <span role="alert" className="text-sm text-red-600">{explicarMontoInvalido(monto)}</span>}
       </label>
 
       <div>
