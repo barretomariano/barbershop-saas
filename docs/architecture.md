@@ -52,5 +52,15 @@ Estado: IMPLEMENTADO en `supabase/migrations/20261027000003_gastos.sql`. Verific
 - La pantalla muestra "queda en el local" = parte del local en ventas del período − gastos válidos (suma de valores ya calculados por la base).
 - Pendiente: montos fijos de alquiler de silla y sueldos por barbero.
 
+## Módulos, plan y widgets (Etapa D, parte 1)
+Estado: IMPLEMENTADO en `supabase/migrations/20261028000006_modulos_y_widgets.sql`. Verificado en Postgres local (34 chequeos en `supabase/tests/rls_modulos_test.sql`). NO verificado todavía sobre Supabase real.
+- Ventas, comisiones y gastos son el núcleo: siempre disponibles. Módulos opcionales: AGENDA (turnos) y CLIENTES (fichas).
+- Solo el OWNER enciende o apaga módulos, con `save_modules` (la base rechaza escrituras directas). Apagar un módulo no borra datos.
+- `businesses.setup_completed_at` marca si el dueño ya hizo la puesta en marcha inicial (elegir módulos); null = falta hacerla. Los negocios existentes la verán la próxima vez que entren.
+- `businesses.plan` (BASICO, INTERMEDIO, AVANZADO) es solo una etiqueta comercial: por ahora no restringe nada. Se cambia únicamente desde administración.
+- Todos los miembros ven qué módulos están activos; `private.module_enabled` queda lista para las reglas de las tablas de turnos y clientes.
+- `user_widgets`: cada persona guarda la disposición de widgets de su inicio (lista JSON, máximo 30 widgets). Qué widgets existen lo valida la aplicación.
+- Pendiente de esta etapa: pantalla de puesta en marcha, pantalla de módulos en Ajustes e inicio con widgets.
+
 ## Publicación
 Exportación estática (`output: "export"`) + Cloudflare Pages. PWA: `public/manifest.webmanifest` y `public/sw.js` (no guarda datos de Supabase).
