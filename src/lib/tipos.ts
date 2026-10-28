@@ -65,3 +65,20 @@ export interface Gasto {
   status: "VALID" | "CANCELED";
   cancel_reason: string | null;
 }
+
+// Fila que devuelve resumen_ventas (los totales los calcula la base de datos).
+export interface FilaResumenVentas {
+  barber_membership_id: string;
+  payment_method: MedioPago;
+  cantidad: number;
+  vendido: number;
+  para_barbero: number;
+  para_local: number;
+}
+
+// Fila que devuelve resumen_gastos.
+export interface FilaResumenGastos {
+  category: CategoriaGasto;
+  cantidad: number;
+  total: number;
+}

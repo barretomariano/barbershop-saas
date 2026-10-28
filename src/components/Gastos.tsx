@@ -5,7 +5,7 @@ import { getSupabase } from "@/lib/supabase";
 import { formatearARS, formatearHora } from "@/lib/dinero";
 import { rangoPeriodo, type Periodo } from "@/lib/periodos";
 import { explicarMontoInvalido, parsearMonto } from "@/lib/validacion";
-import { CATEGORIAS_GASTO, type CategoriaGasto, type Gasto, type Membresia, type Venta } from "@/lib/tipos";
+import { CATEGORIAS_GASTO, type CategoriaGasto, type FilaResumenGastos, type FilaResumenVentas, type Gasto, type Membresia } from "@/lib/tipos";
 
 interface Props { yo: Membresia }
 
@@ -15,6 +15,7 @@ export default function Gastos({ yo }: Props) {
   const [periodo, setPeriodo] = useState<Periodo>("mes");
   const [gastos, setGastos] = useState<Gasto[]>([]);
   const [paraLocal, setParaLocal] = useState(0);
+  const [totalGastos, setTotalGastos] = useState(0);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,26 +36,25 @@ export default function Gastos({ yo }: Props) {
       sb.from("expenses")
         .select("id,category,description,amount,spent_at,status,cancel_reason")
         .gte("spent_at", desde).lt("spent_at", hasta)
+        .eq("business_id", yo.business_id)
         .order("spent_at", { ascending: false }).limit(500),
-      sb.from("sales")
-        .select("local_amount,status")
-        .gte("sold_at", desde).lt("sold_at", hasta).limit(5000),
-    ]).then(([g, v]) => {
+      sb.rpc("resumen_ventas", { p_business: yo.business_id, p_desde: desde, p_hasta: hasta }),
+      sb.rpc("resumen_gastos", { p_business: yo.business_id, p_desde: desde, p_hasta: hasta }),
+    ]).then(([g, v, t]) => {
       if (!vivo) return;
-      if (g.error || v.error) setError("No se pudieron cargar los datos.");
+      if (g.error || v.error || t.error) setError("No se pudieron cargar los datos.");
       else {
         setError(null);
         setGastos((g.data as Gasto[]) ?? []);
-        const ventas = (v.data as Pick<Venta, "local_amount" | "status">[]) ?? [];
-        setParaLocal(ventas.filter((x) => x.status === "VALID").reduce((s, x) => s + x.local_amount, 0));
+        // Totales calculados en la base sobre todas las ventas y gastos válidos del período.
+        setParaLocal(((v.data as FilaResumenVentas[]) ?? []).reduce((s, f) => s + f.para_local, 0));
+        setTotalGastos(((t.data as FilaResumenGastos[]) ?? []).reduce((s, f) => s + f.total, 0));
       }
       setCargando(false);
     });
     return () => { vivo = false; };
-  }, [periodo, version]);
+  }, [periodo, version, yo.business_id]);
 
-  const validos = gastos.filter((g) => g.status === "VALID");
-  const totalGastos = validos.reduce((s, g) => s + g.amount, 0);
   const resultado = paraLocal - totalGastos;
   const montoNum = parsearMonto(monto);
 

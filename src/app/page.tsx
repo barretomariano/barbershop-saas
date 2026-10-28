@@ -62,7 +62,6 @@ function Panel({ userId }: { userId: string }) {
     );
   }
 
-  const barberos = equipo.filter((m) => m.role === "BARBER");
   const pestanas: { id: Pestana; texto: string }[] = [
     { id: "vender", texto: "Vender" },
     { id: "resumen", texto: "Resumen" },
@@ -86,7 +85,7 @@ function Panel({ userId }: { userId: string }) {
         ))}
       </nav>
 
-      {pestana === "vender" && <Vender yo={yo} barberos={barberos} />}
+      {pestana === "vender" && <Vender yo={yo} equipo={equipo} />}
       {pestana === "resumen" && <Resumen yo={yo} equipo={equipo} />}
       {pestana === "gastos" && yo.role !== "BARBER" && <Gastos yo={yo} />}
       {pestana === "ajustes" && yo.role !== "BARBER" && <Ajustes yo={yo} equipo={equipo} onCambio={cargar} />}

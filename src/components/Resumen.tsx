@@ -4,13 +4,16 @@ import { useCallback, useEffect, useState } from "react";
 import { getSupabase } from "@/lib/supabase";
 import { formatearARS, formatearHora } from "@/lib/dinero";
 import { rangoPeriodo, type Periodo } from "@/lib/periodos";
-import type { Membresia, Venta } from "@/lib/tipos";
+import type { FilaResumenVentas, Membresia, Venta } from "@/lib/tipos";
+
+const MAX_LISTA = 100;
 
 interface Props { yo: Membresia; equipo: Membresia[] }
 
 export default function Resumen({ yo, equipo }: Props) {
   const [periodo, setPeriodo] = useState<Periodo>("hoy");
   const [ventas, setVentas] = useState<Venta[]>([]);
+  const [filas, setFilas] = useState<FilaResumenVentas[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const puedeAnular = yo.role !== "BARBER";
@@ -20,19 +23,19 @@ export default function Resumen({ yo, equipo }: Props) {
 
   useEffect(() => {
     let vivo = true;
-    void pedirVentas(periodo).then(({ data, error: e }) => {
+    void pedirDatos(periodo, yo.business_id).then(({ ventas: v, filas: f, error: e }) => {
       if (!vivo) return;
       if (e) setError("No se pudieron cargar las ventas.");
-      else { setError(null); setVentas(data); }
+      else { setError(null); setVentas(v); setFilas(f); }
       setCargando(false);
     });
     return () => { vivo = false; };
-  }, [periodo, version]);
+  }, [periodo, version, yo.business_id]);
 
-  const validas = ventas.filter((v) => v.status === "VALID");
-  const total = validas.reduce((s, v) => s + v.amount, 0);
-  const paraBarbero = validas.reduce((s, v) => s + v.barber_amount, 0);
-  const paraLocal = validas.reduce((s, v) => s + v.local_amount, 0);
+  // Los totales los calcula la base de datos sobre TODAS las ventas válidas del período.
+  const total = filas.reduce((s, f) => s + f.vendido, 0);
+  const paraBarbero = filas.reduce((s, f) => s + f.para_barbero, 0);
+  const paraLocal = filas.reduce((s, f) => s + f.para_local, 0);
   const nombre = (id: string) => equipo.find((m) => m.id === id)?.display_name ?? "—";
 
   async function anular(id: string) {
@@ -43,10 +46,9 @@ export default function Resumen({ yo, equipo }: Props) {
   }
 
   const porBarbero = equipo
-    .filter((m) => m.role === "BARBER")
     .map((m) => {
-      const v = validas.filter((x) => x.barber_membership_id === m.id);
-      return { m, cantidad: v.length, vendido: v.reduce((s, x) => s + x.amount, 0), gana: v.reduce((s, x) => s + x.barber_amount, 0) };
+      const f = filas.filter((x) => x.barber_membership_id === m.id);
+      return { m, cantidad: f.reduce((s, x) => s + x.cantidad, 0), vendido: f.reduce((s, x) => s + x.vendido, 0), gana: f.reduce((s, x) => s + x.para_barbero, 0) };
     })
     .filter((x) => x.cantidad > 0);
 
@@ -86,6 +88,9 @@ export default function Resumen({ yo, equipo }: Props) {
 
           <div>
             <h2 className="mb-2 font-medium">Ventas</h2>
+            {ventas.length >= MAX_LISTA && (
+              <p className="texto-suave mb-2 text-xs">Se muestran las últimas {MAX_LISTA} ventas. Los totales de arriba incluyen todas.</p>
+            )}
             {ventas.length === 0 ? <p className="texto-suave text-sm">No hay ventas en este período.</p> : (
               <ul className="flex flex-col gap-2 text-sm">
                 {ventas.map((v) => (
@@ -109,14 +114,22 @@ export default function Resumen({ yo, equipo }: Props) {
   );
 }
 
-async function pedirVentas(periodo: Periodo): Promise<{ data: Venta[]; error: boolean }> {
+async function pedirDatos(periodo: Periodo, negocio: string): Promise<{ ventas: Venta[]; filas: FilaResumenVentas[]; error: boolean }> {
   const { desde, hasta } = rangoPeriodo(periodo);
-  const { data, error } = await getSupabase()
-    .from("sales")
-    .select("id,barber_membership_id,service_name,amount,payment_method,sold_at,commission_model,commission_bps,barber_amount,local_amount,status,cancel_reason")
-    .gte("sold_at", desde).lt("sold_at", hasta)
-    .order("sold_at", { ascending: false }).limit(500);
-  return { data: (data as Venta[]) ?? [], error: Boolean(error) };
+  const sb = getSupabase();
+  const [lista, resumen] = await Promise.all([
+    sb.from("sales")
+      .select("id,barber_membership_id,service_name,amount,payment_method,sold_at,commission_model,commission_bps,barber_amount,local_amount,status,cancel_reason")
+      .eq("business_id", negocio)
+      .gte("sold_at", desde).lt("sold_at", hasta)
+      .order("sold_at", { ascending: false }).limit(MAX_LISTA),
+    sb.rpc("resumen_ventas", { p_business: negocio, p_desde: desde, p_hasta: hasta }),
+  ]);
+  return {
+    ventas: (lista.data as Venta[]) ?? [],
+    filas: (resumen.data as FilaResumenVentas[]) ?? [],
+    error: Boolean(lista.error || resumen.error),
+  };
 }
 
 function Dato({ titulo, valor }: { titulo: string; valor: string }) {

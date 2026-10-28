@@ -6,13 +6,13 @@ import { formatearARS } from "@/lib/dinero";
 import { explicarMontoInvalido, parsearMonto } from "@/lib/validacion";
 import { MEDIOS_PAGO, type MedioPago, type Membresia, type Servicio } from "@/lib/tipos";
 
-interface Props { yo: Membresia; barberos: Membresia[] }
+interface Props { yo: Membresia; equipo: Membresia[] }
 interface Resultado { amount: number; barber_amount: number; local_amount: number }
 
-export default function Vender({ yo, barberos }: Props) {
+export default function Vender({ yo, equipo }: Props) {
   const esBarbero = yo.role === "BARBER";
   const [servicios, setServicios] = useState<Servicio[]>([]);
-  const [barbero, setBarbero] = useState<string>(esBarbero ? yo.id : (barberos[0]?.id ?? ""));
+  const [barbero, setBarbero] = useState<string>(yo.id); // por defecto, quien está usando la app
   const [servicio, setServicio] = useState<string | null>(null);
   const [monto, setMonto] = useState("");
   const [medio, setMedio] = useState<MedioPago>("EFECTIVO");
@@ -67,9 +67,9 @@ export default function Vender({ yo, barberos }: Props) {
     <section className="flex flex-col gap-5">
       {!esBarbero && (
         <label className="flex flex-col gap-1 text-sm">
-          Barbero
+          Atendió
           <select className="campo" value={barbero} onChange={(e) => setBarbero(e.target.value)}>
-            {barberos.map((b) => <option key={b.id} value={b.id}>{b.display_name}</option>)}
+            {equipo.map((b) => <option key={b.id} value={b.id}>{b.display_name}</option>)}
           </select>
         </label>
       )}
