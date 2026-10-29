@@ -1,5 +1,7 @@
 # Reglas del proyecto
 
+> Si sos otro agente (Codex u otro): leé también `AGENTS.md` y `docs/handoff-codex.md` antes de empezar.
+
 ## Qué es
 SaaS multi-tenant de gestión financiera para barberías en Argentina: registrar ventas en ~10 segundos, calcular comisiones barbero/local, ver resúmenes por rol. Tiene módulos opcionales que el dueño enciende o apaga: agenda de turnos y clientes (ver docs/planes.md).
 
