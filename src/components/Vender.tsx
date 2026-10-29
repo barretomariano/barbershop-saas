@@ -4,16 +4,18 @@ import { useEffect, useRef, useState } from "react";
 import { getSupabase } from "@/lib/supabase";
 import { formatearARS } from "@/lib/dinero";
 import { explicarMontoInvalido, parsearMonto } from "@/lib/validacion";
-import { MEDIOS_PAGO, type MedioPago, type Membresia, type Servicio } from "@/lib/tipos";
+import { MEDIOS_PAGO, type Cliente, type MedioPago, type Membresia, type Servicio } from "@/lib/tipos";
 
-interface Props { yo: Membresia; equipo: Membresia[] }
+interface Props { yo: Membresia; equipo: Membresia[]; hayClientes: boolean }
 interface Resultado { amount: number; barber_amount: number; local_amount: number }
 
-export default function Vender({ yo, equipo }: Props) {
+export default function Vender({ yo, equipo, hayClientes }: Props) {
   const esBarbero = yo.role === "BARBER";
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [barbero, setBarbero] = useState<string>(yo.id); // por defecto, quien está usando la app
   const [servicio, setServicio] = useState<string | null>(null);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [cliente, setCliente] = useState("");
   const [monto, setMonto] = useState("");
   const [medio, setMedio] = useState<MedioPago>("EFECTIVO");
   const [enviando, setEnviando] = useState(false);
@@ -28,6 +30,14 @@ export default function Vender({ yo, equipo }: Props) {
       .eq("business_id", yo.business_id).eq("active", true).order("name")
       .then(({ data }) => setServicios((data as Servicio[]) ?? []));
   }, [yo.business_id]);
+
+  useEffect(() => {
+    if (!hayClientes) return;
+    let vivo = true;
+    void Promise.resolve(getSupabase().from("clients").select("id,business_id,name,phone,notes,active").eq("business_id", yo.business_id).eq("active", true).order("name"))
+      .then(({ data }) => { if (vivo) setClientes((data as Cliente[]) ?? []); });
+    return () => { vivo = false; };
+  }, [yo.business_id, hayClientes]);
 
   const montoNum = parsearMonto(monto);
 
@@ -49,6 +59,7 @@ export default function Vender({ yo, equipo }: Props) {
       p_payment: medio,
       p_idempotency_key: clave.current,
       p_service: servicio,
+      p_client: cliente || null,
     });
     if (e) {
       setError(e.message);
@@ -59,6 +70,7 @@ export default function Vender({ yo, equipo }: Props) {
     setResultado(venta as Resultado);
     setMonto("");
     setServicio(null);
+    setCliente("");
     clave.current = crypto.randomUUID();
     setEnviando(false);
   }
@@ -89,6 +101,16 @@ export default function Vender({ yo, equipo }: Props) {
           </div>
         )}
       </div>
+
+      {hayClientes && (
+        <label className="flex flex-col gap-1 text-sm">
+          Cliente (opcional)
+          <select className="campo" value={cliente} onChange={(e) => setCliente(e.target.value)}>
+            <option value="">Sin cliente</option>
+            {clientes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </label>
+      )}
 
       <label className="flex flex-col gap-1 text-sm">
         Monto cobrado

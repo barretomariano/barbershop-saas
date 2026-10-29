@@ -9,6 +9,24 @@ export default function Login() {
   const [clave, setClave] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
+
+  // Solo funciona con email (el dueño). Los barberos con usuario piden al dueño que les restablezca la clave.
+  async function olvide() {
+    setError(null);
+    setAviso(null);
+    if (!email.includes("@")) {
+      setError("Escribí tu email arriba para recibir el enlace. Si entrás con usuario, pedile al dueño que te restablezca la clave.");
+      return;
+    }
+    try {
+      const { error: e } = await getSupabase().auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin });
+      if (e) setError("No pudimos enviar el enlace. Intentá de nuevo en unos minutos.");
+      else setAviso("Si el email está registrado, te enviamos un enlace para crear una contraseña nueva.");
+    } catch {
+      setError("No pudimos conectar. Revisá tu conexión e intentá de nuevo.");
+    }
+  }
 
   async function ingresar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault(); // evita que el navegador recargue la página
@@ -38,9 +56,11 @@ export default function Login() {
           <input className="campo" type="password" autoComplete="current-password" value={clave} onChange={(e) => setClave(e.target.value)} />
         </label>
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+        {aviso && <p role="status" className="text-sm">{aviso}</p>}
         <button type="submit" className="boton" disabled={enviando || !email || !clave}>
           {enviando ? "Ingresando…" : "Ingresar"}
         </button>
+        <button type="button" className="text-sm underline self-start" onClick={olvide}>Olvidé mi contraseña</button>
       </form>
     </main>
   );

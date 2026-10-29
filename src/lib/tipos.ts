@@ -20,6 +20,7 @@ export interface Membresia {
   commission_model: ModeloComision;
   commission_bps: number;
   commission_configured: boolean;
+  fixed_monthly: number;
 }
 
 export interface Servicio {
@@ -27,6 +28,7 @@ export interface Servicio {
   business_id: string;
   name: string;
   default_price: number;
+  duration_minutes: number;
   active: boolean;
 }
 
@@ -81,4 +83,68 @@ export interface FilaResumenGastos {
   category: CategoriaGasto;
   cantidad: number;
   total: number;
+}
+
+// ---------------------------------------------------------------------------
+// Módulos, clientes, turnos, metas y horarios (Etapa D)
+// ---------------------------------------------------------------------------
+export type ModuloNegocio = "AGENDA" | "CLIENTES";
+export type PlanNegocio = "BASICO" | "INTERMEDIO" | "AVANZADO";
+
+export const MODULOS: { valor: ModuloNegocio; titulo: string; detalle: string }[] = [
+  { valor: "AGENDA", titulo: "Agenda de turnos", detalle: "Turnos por barbero, con aviso de turnos por cobrar." },
+  { valor: "CLIENTES", titulo: "Clientes", detalle: "Fichas con teléfono, notas e historial." },
+];
+
+export interface DatosNegocio {
+  nombre: string;
+  plan: PlanNegocio;
+  configuracionTerminada: boolean;
+  modulos: ModuloNegocio[]; // los que están encendidos
+}
+
+export interface Cliente {
+  id: string;
+  business_id: string;
+  name: string;
+  phone: string | null;
+  notes: string | null;
+  active: boolean;
+}
+
+export type EstadoTurno = "SCHEDULED" | "DONE" | "PAID" | "CANCELED" | "NO_SHOW";
+
+export interface Turno {
+  id: string;
+  barber_membership_id: string;
+  client_id: string | null;
+  client_name: string | null;
+  service_id: string | null;
+  service_name: string | null;
+  starts_at: string;
+  ends_at: string;
+  status: EstadoTurno;
+  note: string | null;
+  sale_id: string | null;
+  cancel_reason: string | null;
+  clients: { name: string; phone: string | null } | null;
+}
+
+export interface Meta {
+  barber_membership_id: string | null;
+  month: string;
+  amount: number;
+}
+
+export interface HorarioTrabajo {
+  membership_id: string;
+  weekday: number; // 1 = lunes ... 7 = domingo
+  start_time: string; // "09:00:00"
+  end_time: string;
+}
+
+export interface FilaResumenServicio {
+  service_name: string;
+  cantidad: number;
+  vendido: number;
 }

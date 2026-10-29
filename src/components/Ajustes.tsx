@@ -4,10 +4,11 @@ import { useEffect, useState, useCallback } from "react";
 import { getSupabase } from "@/lib/supabase";
 import { formatearARS } from "@/lib/dinero";
 import { parsearMonto, porcentajeABps } from "@/lib/validacion";
-import type { ModeloComision, Membresia, Servicio } from "@/lib/tipos";
+import type { DatosNegocio, ModeloComision, Membresia, Servicio } from "@/lib/tipos";
 import Equipo from "@/components/Equipo";
+import { Horarios, Metas, Modulos } from "@/components/AjustesNegocio";
 
-interface Props { yo: Membresia; equipo: Membresia[]; onCambio: () => void }
+interface Props { yo: Membresia; equipo: Membresia[]; negocio: DatosNegocio; onCambio: () => void }
 
 const MODELOS: { valor: ModeloComision; etiqueta: string }[] = [
   { valor: "PERCENT", etiqueta: "Porcentaje de cada venta" },
@@ -15,13 +16,17 @@ const MODELOS: { valor: ModeloComision; etiqueta: string }[] = [
   { valor: "SALARY", etiqueta: "Sueldo fijo (0% por venta)" },
 ];
 
-export default function Ajustes({ yo, equipo, onCambio }: Props) {
+export default function Ajustes({ yo, equipo, negocio, onCambio }: Props) {
   const esOwner = yo.role === "OWNER";
+  const hayAgenda = negocio.modulos.includes("AGENDA");
   return (
     <div className="flex flex-col gap-8">
-      <Servicios yo={yo} />
+      <Servicios yo={yo} hayAgenda={hayAgenda} />
+      {hayAgenda && <Horarios yo={yo} equipo={equipo} />}
       {esOwner ? (
         <>
+          <Modulos yo={yo} negocio={negocio} onCambio={onCambio} />
+          <Metas yo={yo} equipo={equipo} />
           <Equipo negocio={yo.business_id} onCambio={onCambio} />
           <section className="flex flex-col gap-4">
             <h2 className="font-medium">Comisión de cada barbero</h2>
@@ -39,13 +44,16 @@ export default function Ajustes({ yo, equipo, onCambio }: Props) {
 function FilaComision({ m, onCambio }: { m: Membresia; onCambio: () => void }) {
   const [modelo, setModelo] = useState<ModeloComision>(m.commission_model);
   const [pct, setPct] = useState(String(m.commission_bps / 100));
+  const [fijo, setFijo] = useState(m.fixed_monthly ? String(m.fixed_monthly) : "");
   const [msg, setMsg] = useState<string | null>(null);
 
   async function guardar() {
     const bps = modelo === "PERCENT" ? porcentajeABps(pct) : 0;
     if (bps === null) { setMsg("El porcentaje debe ser un número entero entre 0 y 100."); return; }
+    const fijoNum = modelo === "PERCENT" || fijo.trim() === "" ? 0 : parsearMonto(fijo);
+    if (fijoNum === null) { setMsg("El monto fijo debe ser en pesos enteros, sin centavos ni signos."); return; }
     const { error } = await getSupabase().from("memberships")
-      .update({ commission_model: modelo, commission_bps: bps, commission_configured: true }).eq("id", m.id);
+      .update({ commission_model: modelo, commission_bps: bps, commission_configured: true, fixed_monthly: fijoNum }).eq("id", m.id);
     if (error) setMsg("No se pudo guardar."); else { setMsg("Guardado."); onCambio(); }
   }
 
@@ -61,6 +69,12 @@ function FilaComision({ m, onCambio }: { m: Membresia; onCambio: () => void }) {
           <input className="campo w-24" inputMode="numeric" value={pct} onChange={(e) => setPct(e.target.value)} /> %
         </label>
       )}
+      {modelo !== "PERCENT" && (
+        <label className="flex items-center gap-2 text-sm">
+          {modelo === "CHAIR_RENT" ? "Alquiler de silla por mes" : "Sueldo por mes"}
+          <input className="campo w-36" inputMode="numeric" placeholder="$ 0" value={fijo} onChange={(e) => setFijo(e.target.value)} />
+        </label>
+      )}
       <div className="flex items-center gap-3">
         <button className="boton-chico" onClick={guardar}>Guardar</button>
         {msg && <span role="status" className="text-sm">{msg}</span>}
@@ -69,10 +83,11 @@ function FilaComision({ m, onCambio }: { m: Membresia; onCambio: () => void }) {
   );
 }
 
-function Servicios({ yo }: { yo: Membresia }) {
+function Servicios({ yo, hayAgenda }: { yo: Membresia; hayAgenda: boolean }) {
   const [lista, setLista] = useState<Servicio[]>([]);
   const [nombre, setNombre] = useState("");
   const [precio, setPrecio] = useState("");
+  const [duracion, setDuracion] = useState(30);
   const [error, setError] = useState<string | null>(null);
 
   const [version, setVersion] = useState(0);
@@ -81,7 +96,7 @@ function Servicios({ yo }: { yo: Membresia }) {
   useEffect(() => {
     let vivo = true;
     void Promise.resolve(
-      getSupabase().from("services").select("id,business_id,name,default_price,active")
+      getSupabase().from("services").select("id,business_id,name,default_price,duration_minutes,active")
         .eq("business_id", yo.business_id).eq("active", true).order("name"),
     ).then(({ data }) => { if (vivo) setLista((data as Servicio[]) ?? []); });
     return () => { vivo = false; };
@@ -90,7 +105,7 @@ function Servicios({ yo }: { yo: Membresia }) {
   async function agregar() {
     const p = parsearMonto(precio);
     if (!nombre.trim() || !p) { setError("Completá el nombre y un precio válido."); return; }
-    const { error: e } = await getSupabase().from("services").insert({ business_id: yo.business_id, name: nombre.trim(), default_price: p });
+    const { error: e } = await getSupabase().from("services").insert({ business_id: yo.business_id, name: nombre.trim(), default_price: p, duration_minutes: duracion });
     if (e) setError(e.message.includes("duplicate") ? "Ya existe un servicio con ese nombre." : "No se pudo guardar.");
     else { setError(null); setNombre(""); setPrecio(""); recargar(); }
   }
@@ -107,7 +122,7 @@ function Servicios({ yo }: { yo: Membresia }) {
       <ul className="flex flex-col gap-1 text-sm">
         {lista.map((s) => (
           <li key={s.id} className="flex justify-between">
-            <span>{s.name} · {formatearARS(s.default_price)}</span>
+            <span>{s.name} · {formatearARS(s.default_price)}{hayAgenda ? ` · ${s.duration_minutes} min` : ""}</span>
             <button className="text-xs underline" onClick={() => quitar(s.id)}>Quitar</button>
           </li>
         ))}
@@ -115,6 +130,11 @@ function Servicios({ yo }: { yo: Membresia }) {
       <div className="flex flex-wrap gap-2">
         <input className="campo flex-1" placeholder="Nombre (ej. Corte)" value={nombre} onChange={(e) => setNombre(e.target.value)} />
         <input className="campo w-28" inputMode="numeric" placeholder="Precio" value={precio} onChange={(e) => setPrecio(e.target.value)} />
+        {hayAgenda && (
+          <select className="campo w-28" aria-label="Duración" value={duracion} onChange={(e) => setDuracion(Number(e.target.value))}>
+            {[15, 30, 45, 60, 75, 90, 120].map((d) => <option key={d} value={d}>{d} min</option>)}
+          </select>
+        )}
         <button className="boton-chico" onClick={agregar}>Agregar</button>
       </div>
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}

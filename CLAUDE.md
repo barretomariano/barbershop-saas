@@ -1,7 +1,7 @@
 # Reglas del proyecto
 
 ## Qué es
-SaaS multi-tenant de gestión financiera para barberías en Argentina: registrar ventas en ~10 segundos, calcular comisiones barbero/local, ver resúmenes por rol. NO es app de turnos.
+SaaS multi-tenant de gestión financiera para barberías en Argentina: registrar ventas en ~10 segundos, calcular comisiones barbero/local, ver resúmenes por rol. Tiene módulos opcionales que el dueño enciende o apaga: agenda de turnos y clientes (ver docs/planes.md).
 
 ## Stack decidido (no cambiar sin explicar el motivo)
 Next.js + TypeScript (App Router), Tailwind, shadcn/ui, Supabase (Postgres, Auth con Google, RLS), Vercel o alternativa verificada, Vitest + Playwright, Zod.
@@ -20,6 +20,6 @@ Next.js + TypeScript (App Router), Tailwind, shadcn/ui, Supabase (Postgres, Auth
 `npm run dev`, `npm run lint`, `npm run test`, `npm run build`, `npm run typecheck`
 
 ## Etapa actual
-Etapa 5: app completa para el primer cliente. Incluye ingreso con email y contraseña, ventas, resumen, gastos (solo dueño y encargado), ajustes (servicios y comisiones), PWA instalable y publicación estática para Cloudflare (`output: "export"`, ver `docs/publicar-en-cloudflare.md`).
-Verificado: lint, tipos, tests de lógica y build; 68 chequeos de seguridad SQL en Postgres local (17 + 30 + 21).
-NO verificado todavía: contra el Supabase real ni en un navegador. Pendiente: aplicar la migración 3 en Supabase, publicar en Cloudflare, login con Google, pruebas con el primer cliente.
+Etapa D: módulos, planes y widgets. Hecho: puesta en marcha del dueño, módulos AGENDA y CLIENTES, agenda con turnos por cobrar, clientes, metas, horarios, alquiler de silla y sueldos fijos, inicio con widgets, recuperar contraseña (migraciones 6 y 7).
+Verificado: lint, tipos, 80 tests de lógica, build, y en Postgres local 232 chequeos de seguridad SQL (147 de etapas anteriores + 85 de agenda, clientes y metas).
+NO verificado todavía: contra el Supabase real ni en un navegador. Pendiente: aplicar la migración 7 en Supabase, publicar en Cloudflare, probar con el primer cliente, diseño y experiencia de usuario, restricciones por plan (ver docs/planes.md).
