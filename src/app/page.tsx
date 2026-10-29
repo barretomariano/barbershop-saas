@@ -15,8 +15,10 @@ import Gastos from "@/components/Gastos";
 import Agenda from "@/components/Agenda";
 import Clientes from "@/components/Clientes";
 import AvisoCierre from "@/components/AvisoCierre";
+import Caja from "@/components/Caja";
+import Reportes from "@/components/Reportes";
 
-export type Pestana = "inicio" | "vender" | "agenda" | "clientes" | "resumen" | "gastos" | "ajustes";
+export type Pestana = "inicio" | "vender" | "agenda" | "clientes" | "resumen" | "reportes" | "caja" | "gastos" | "ajustes";
 const COLUMNAS = "id,business_id,user_id,role,display_name,active,commission_model,commission_bps,commission_configured,fixed_monthly";
 
 export default function Raiz() {
@@ -87,7 +89,8 @@ function Panel({ userId }: { userId: string }) {
     ...(hayAgenda ? [{ id: "agenda" as Pestana, texto: "Agenda" }] : []),
     ...(hayClientes ? [{ id: "clientes" as Pestana, texto: "Clientes" }] : []),
     { id: "resumen", texto: "Resumen" },
-    ...(gestion ? [{ id: "gastos" as Pestana, texto: "Gastos" }, { id: "ajustes" as Pestana, texto: "Ajustes" }] : []),
+    { id: "reportes", texto: "Reportes" },
+    ...(gestion ? [{ id: "caja" as Pestana, texto: "Caja" }, { id: "gastos" as Pestana, texto: "Gastos" }, { id: "ajustes" as Pestana, texto: "Ajustes" }] : []),
   ];
   // Si se apagó el módulo de la pestaña abierta, se vuelve al inicio.
   const activa = pestanas.some((p) => p.id === pestana) ? pestana : "inicio";
@@ -116,6 +119,8 @@ function Panel({ userId }: { userId: string }) {
       {activa === "agenda" && hayAgenda && <Agenda yo={yo} equipo={equipo} hayClientes={hayClientes} />}
       {activa === "clientes" && hayClientes && <Clientes yo={yo} />}
       {activa === "resumen" && <Resumen yo={yo} equipo={equipo} />}
+      {activa === "reportes" && <Reportes yo={yo} hayClientes={hayClientes} />}
+      {activa === "caja" && gestion && <Caja yo={yo} equipo={equipo} />}
       {activa === "gastos" && gestion && <Gastos yo={yo} />}
       {activa === "ajustes" && gestion && <Ajustes yo={yo} equipo={equipo} negocio={negocio} onCambio={cargar} />}
     </main>

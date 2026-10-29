@@ -59,7 +59,7 @@ select pg_temp.esperar('Monto fijo negativo se rechaza',
 -- Metas
 select public.set_goal(current_setting('test.g')::uuid, null, (now() at time zone 'America/Argentina/Buenos_Aires')::date, 2000000);
 select pg_temp.esperar('Dueño fija la meta del negocio', pg_temp.n('select count(*) from public.sales_goals where barber_membership_id is null') = 1);
-select public.set_goal(current_setting('test.g')::uuid, null, (now() at time zone 'America/Argentina/Buenos_Aires')::date + 3, 2500000);
+select public.set_goal(current_setting('test.g')::uuid, null, date_trunc('month', now() at time zone 'America/Argentina/Buenos_Aires')::date + 3, 2500000);
 select pg_temp.esperar('Repetir el mes reemplaza la meta (no duplica)',
   pg_temp.n('select count(*) from public.sales_goals where barber_membership_id is null') = 1
   and pg_temp.n('select amount from public.sales_goals where barber_membership_id is null') = 2500000);

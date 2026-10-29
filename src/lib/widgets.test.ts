@@ -97,3 +97,11 @@ describe("turnos", () => {
     expect(telefonoParaWhatsApp("123")).toBeNull();
   });
 });
+
+describe("widgets de gestión", () => {
+  it("las alertas son solo para dueño y encargado; la comisión es para todos", () => {
+    expect(widgetsDisponibles("BARBER", []).map((w) => w.id)).not.toContain("alertas");
+    expect(widgetsDisponibles("MANAGER", []).map((w) => w.id)).toContain("alertas");
+    expect(widgetsDisponibles("BARBER", []).map((w) => w.id)).toContain("comision");
+  });
+});

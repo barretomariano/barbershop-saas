@@ -5,11 +5,12 @@ import { getSupabase } from "@/lib/supabase";
 import { formatearARS } from "@/lib/dinero";
 import { PERIODOS, diasDelMes, hoyAR, mesActual, rangoAnterior, rangoPeriodo, type Periodo } from "@/lib/periodos";
 import {
-  MEDIOS_PAGO, type FilaResumenGastos, type FilaResumenServicio, type FilaResumenVentas,
-  type Membresia, type ModuloNegocio, type Turno,
+  CATEGORIAS_GASTO, MEDIOS_PAGO, type FilaPendiente, type FilaResumenGastos, type FilaResumenServicio, type FilaResumenVentas,
+  type Membresia, type ModuloNegocio, type Presupuesto, type Turno,
 } from "@/lib/tipos";
+import { alertasDePresupuesto } from "@/lib/gestion";
 import { gananciaLocal, progresoMeta, textoVariacion, variacion } from "@/lib/calculos";
-import { esPorCerrar, ETIQUETA_ESTADO, horaCorta, nombreCliente, rangoDia } from "@/lib/turnos";
+import { esPorCerrar, ETIQUETA_ESTADO, horaCorta, nombreCliente, rangoDia, sumarDias } from "@/lib/turnos";
 import {
   CATALOGO, layoutParaGuardar, layoutPorDefecto, moverWidget, sanearLayout, widgetsDisponibles, type IdWidget,
 } from "@/lib/widgets";
@@ -27,6 +28,10 @@ interface Datos {
   meta: number | null;
   turnosHoy: Turno[];
   porCerrar: Turno[];
+  pendiente: FilaPendiente[];
+  gastosMes: FilaResumenGastos[];
+  presupuestos: Presupuesto[];
+  cajaAyerSinCerrar: boolean;
 }
 
 const suma = (f: FilaResumenVentas[], k: "vendido" | "para_barbero" | "para_local" | "cantidad") => f.reduce((s, x) => s + x[k], 0);
@@ -286,6 +291,40 @@ function Widget({ id, yo, gestion, periodo, datos, nombre, irA }: WProps) {
     );
   }
 
+  if (id === "comision") {
+    const aPagar = datos.pendiente.reduce((t, f) => t + f.a_pagar, 0);
+    return (
+      <Tarjeta titulo={gestion ? "Comisiones por pagar" : "Tu comisión por cobrar"}>
+        <p className="text-3xl font-semibold">{formatearARS(aPagar)}</p>
+        <p className="texto-suave text-sm">{aPagar === 0 ? "No hay comisiones pendientes de liquidar." : `${datos.pendiente.reduce((t, f) => t + f.cantidad, 0)} ventas sin liquidar${gestion ? "" : " (lo que todavía no te pagaron)"}.`}</p>
+        {gestion && aPagar > 0 && <button className="boton-chico self-start" onClick={() => irA("caja")}>Ir a liquidar</button>}
+      </Tarjeta>
+    );
+  }
+
+  if (id === "alertas") {
+    const lista: { texto: string; grave: boolean }[] = [];
+    const etiquetaCat = (c: string) => CATEGORIAS_GASTO.find((x) => x.valor === c)?.etiqueta ?? c;
+    for (const a of alertasDePresupuesto(datos.gastosMes, datos.presupuestos)) {
+      lista.push({ grave: a.nivel === "excedido", texto: `${a.nivel === "excedido" ? "Te pasaste del presupuesto" : "Cerca del límite"} en ${etiquetaCat(a.categoria)}: ${formatearARS(a.gastado)} de ${formatearARS(a.presupuesto)}.` });
+    }
+    if (datos.cajaAyerSinCerrar) lista.push({ grave: false, texto: "La caja de ayer no se cerró." });
+    if (datos.meta) {
+      const { dia, total } = diasDelMes();
+      const p = progresoMeta(suma(datos.mes, "vendido"), datos.meta, dia, total);
+      if (!p.alcanzada && dia >= 7 && p.proyeccion < datos.meta) lista.push({ grave: false, texto: `A este ritmo cerrarías el mes en ${formatearARS(p.proyeccion)}, por debajo de la meta.` });
+    }
+    return (
+      <Tarjeta titulo="Alertas">
+        {lista.length === 0 ? <p className="texto-suave text-sm">Todo en orden. 👌</p> : (
+          <ul className="flex flex-col gap-1 text-sm">
+            {lista.map((a) => <li key={a.texto} className={a.grave ? "text-red-600" : ""}>• {a.texto}</li>)}
+          </ul>
+        )}
+      </Tarjeta>
+    );
+  }
+
   // por_barbero
   const filas = Array.from(new Set(datos.actual.map((f) => f.barber_membership_id)))
     .map((mid) => ({ mid, total: datos.actual.filter((f) => f.barber_membership_id === mid).reduce((s, f) => s + f.vendido, 0), cant: datos.actual.filter((f) => f.barber_membership_id === mid).reduce((s, f) => s + f.cantidad, 0) }))
@@ -316,7 +355,8 @@ async function cargarDatos(yo: Membresia, periodo: Periodo, gestion: boolean, ha
     return (res.data as T[]) ?? [];
   };
 
-  const [a, b, m, g, s, f, meta, hoy, cerrar] = await Promise.all([
+  const ayer = rangoDia(sumarDias(hoyAR(), -1));
+  const [a, b, m, g, s, f, meta, hoy, cerrar, pend, gMes, pres, cierreAyer, ventasAyer] = await Promise.all([
     sb.rpc("resumen_ventas", { p_business: neg, p_desde: r.desde, p_hasta: r.hasta }),
     sb.rpc("resumen_ventas", { p_business: neg, p_desde: ant.desde, p_hasta: ant.hasta }),
     sb.rpc("resumen_ventas", { p_business: neg, p_desde: rMes.desde, p_hasta: rMes.hasta }),
@@ -331,6 +371,11 @@ async function cargarDatos(yo: Membresia, periodo: Periodo, gestion: boolean, ha
       ? sb.from("appointments").select("*, clients(name,phone)").eq("business_id", neg)
           .or(`status.eq.DONE,and(status.eq.SCHEDULED,ends_at.lte.${ahoraIso})`).order("starts_at").limit(50)
       : vacio,
+    sb.rpc("pendiente_liquidacion", { p_business: neg, p_upto: hoyAR() }),
+    gestion ? sb.rpc("resumen_gastos", { p_business: neg, p_desde: rMes.desde, p_hasta: rMes.hasta }) : vacio,
+    gestion ? sb.from("budgets").select("category,month,amount").eq("business_id", neg).eq("month", mesActual()) : vacio,
+    gestion ? sb.from("cash_closings").select("id").eq("business_id", neg).eq("closing_date", sumarDias(hoyAR(), -1)) : vacio,
+    gestion && ayer ? sb.rpc("resumen_ventas", { p_business: neg, p_desde: ayer.desde, p_hasta: ayer.hasta }) : vacio,
   ]);
 
   const metas = sacar<{ barber_membership_id: string | null; amount: number }>(meta);
@@ -346,6 +391,8 @@ async function cargarDatos(yo: Membresia, periodo: Periodo, gestion: boolean, ha
       gastos: sacar<FilaResumenGastos>(g), servicios: sacar<FilaResumenServicio>(s),
       fijos: { alquiler: Number(fijos?.alquiler_silla ?? 0), sueldos: Number(fijos?.sueldos ?? 0) },
       meta: suya?.amount ?? null, turnosHoy, porCerrar,
+      pendiente: sacar<FilaPendiente>(pend), gastosMes: sacar<FilaResumenGastos>(gMes), presupuestos: sacar<Presupuesto>(pres),
+      cajaAyerSinCerrar: gestion && sacar<{ id: string }>(cierreAyer).length === 0 && sacar<FilaResumenVentas>(ventasAyer).length > 0,
     },
   };
 }

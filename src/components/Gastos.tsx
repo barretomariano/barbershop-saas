@@ -5,7 +5,8 @@ import { getSupabase } from "@/lib/supabase";
 import { formatearARS, formatearHora } from "@/lib/dinero";
 import { rangoPeriodo, type Periodo } from "@/lib/periodos";
 import { explicarMontoInvalido, parsearMonto } from "@/lib/validacion";
-import { CATEGORIAS_GASTO, type CategoriaGasto, type FilaResumenGastos, type FilaResumenVentas, type Gasto, type Membresia } from "@/lib/tipos";
+import { CATEGORIAS_GASTO, type CategoriaGasto, type FilaResumenGastos, type FilaResumenVentas, type Gasto, type Membresia, type Proveedor } from "@/lib/tipos";
+import GastosAvanzados from "@/components/GastosAvanzados";
 
 interface Props { yo: Membresia }
 
@@ -22,6 +23,8 @@ export default function Gastos({ yo }: Props) {
   const [categoria, setCategoria] = useState<CategoriaGasto>("INSUMOS");
   const [monto, setMonto] = useState("");
   const [detalle, setDetalle] = useState("");
+  const [proveedores, setProveedores] = useState<Proveedor[]>([]);
+  const [proveedor, setProveedor] = useState("");
   const [enviando, setEnviando] = useState(false);
   const clave = useRef<string>(crypto.randomUUID());
 
@@ -55,6 +58,18 @@ export default function Gastos({ yo }: Props) {
     return () => { vivo = false; };
   }, [periodo, version, yo.business_id]);
 
+  // Carga los gastos recurrentes que correspondan al mes (no duplica) y trae los proveedores.
+  useEffect(() => {
+    let vivo = true;
+    const sb = getSupabase();
+    void Promise.resolve(sb.rpc("generate_recurring_expenses", { p_business: yo.business_id })).then(({ data }) => {
+      if (vivo && Number(data) > 0) setVersion((v) => v + 1);
+    });
+    void Promise.resolve(sb.from("suppliers").select("id,business_id,name,phone,notes,active").eq("business_id", yo.business_id).eq("active", true).order("name"))
+      .then(({ data }) => { if (vivo) setProveedores((data as Proveedor[]) ?? []); });
+    return () => { vivo = false; };
+  }, [yo.business_id]);
+
   const resultado = paraLocal - totalGastos;
   const montoNum = parsearMonto(monto);
 
@@ -68,6 +83,7 @@ export default function Gastos({ yo }: Props) {
       p_amount: montoNum,
       p_idempotency_key: clave.current,
       p_description: detalle,
+      p_supplier: proveedor || null,
     });
     setEnviando(false);
     if (e) { setError(e.message); return; }
@@ -93,6 +109,12 @@ export default function Gastos({ yo }: Props) {
         </select>
         <input className="campo" inputMode="numeric" placeholder="Monto en pesos" value={monto} onChange={(e) => setMonto(e.target.value)} />
         {explicarMontoInvalido(monto) && <p role="alert" className="text-sm text-red-600">{explicarMontoInvalido(monto)}</p>}
+        {proveedores.length > 0 && (
+          <select className="campo" value={proveedor} onChange={(e) => setProveedor(e.target.value)} aria-label="Proveedor">
+            <option value="">Sin proveedor</option>
+            {proveedores.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        )}
         <input className="campo" placeholder="Detalle (opcional)" maxLength={200} value={detalle} onChange={(e) => setDetalle(e.target.value)} />
         <button className="boton" disabled={!montoNum || enviando} onClick={guardar}>
           {enviando ? "Guardando…" : montoNum ? `Guardar ${formatearARS(montoNum)}` : "Guardar gasto"}
@@ -135,6 +157,8 @@ export default function Gastos({ yo }: Props) {
           </div>
         </>
       )}
+
+      <GastosAvanzados yo={yo} onGenerado={recargar} />
     </section>
   );
 }

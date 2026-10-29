@@ -7,6 +7,7 @@ import { parsearMonto, porcentajeABps } from "@/lib/validacion";
 import type { DatosNegocio, ModeloComision, Membresia, Servicio } from "@/lib/tipos";
 import Equipo from "@/components/Equipo";
 import { Horarios, Metas, Modulos } from "@/components/AjustesNegocio";
+import Auditoria from "@/components/Auditoria";
 
 interface Props { yo: Membresia; equipo: Membresia[]; negocio: DatosNegocio; onCambio: () => void }
 
@@ -27,6 +28,7 @@ export default function Ajustes({ yo, equipo, negocio, onCambio }: Props) {
         <>
           <Modulos yo={yo} negocio={negocio} onCambio={onCambio} />
           <Metas yo={yo} equipo={equipo} />
+          <Auditoria yo={yo} equipo={equipo} />
           <Equipo negocio={yo.business_id} onCambio={onCambio} />
           <section className="flex flex-col gap-4">
             <h2 className="font-medium">Comisión de cada barbero</h2>

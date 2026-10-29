@@ -5,7 +5,7 @@ import type { ModuloNegocio, Rol } from "./tipos";
 // quiere ver (public.user_widgets.layout); acá se decide cuáles existen y quién puede verlos.
 export type IdWidget =
   | "ventas" | "ganancia" | "metas" | "por_cobrar" | "turnos_hoy"
-  | "por_servicio" | "medios_pago" | "por_barbero";
+  | "por_servicio" | "medios_pago" | "por_barbero" | "comision" | "alertas";
 
 export interface DefWidget {
   id: IdWidget;
@@ -27,6 +27,8 @@ export const CATALOGO: DefWidget[] = [
   { id: "por_servicio", titulo: "Ventas por servicio", descripcion: "Qué servicios se venden más.", roles: TODOS },
   { id: "medios_pago", titulo: "Medios de pago", descripcion: "Cómo cobran los clientes.", roles: TODOS },
   { id: "por_barbero", titulo: "Por barbero", descripcion: "Ranking del equipo.", roles: GESTION },
+  { id: "comision", titulo: "Comisiones por pagar", descripcion: "Lo que falta liquidar (a cada barbero, lo suyo).", roles: TODOS },
+  { id: "alertas", titulo: "Alertas", descripcion: "Presupuestos, caja sin cerrar y meta.", roles: GESTION },
 ];
 
 export const MAX_WIDGETS = 30;

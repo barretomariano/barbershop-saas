@@ -148,3 +148,35 @@ export interface FilaResumenServicio {
   cantidad: number;
   vendido: number;
 }
+
+// ---------------------------------------------------------------------------
+// Gestión avanzada (migración 8)
+// ---------------------------------------------------------------------------
+export interface Proveedor { id: string; business_id: string; name: string; phone: string | null; notes: string | null; active: boolean }
+
+export interface GastoRecurrente {
+  id: string; business_id: string; category: CategoriaGasto; description: string | null;
+  amount: number; day_of_month: number; supplier_id: string | null; active: boolean;
+}
+
+export interface CierreCaja {
+  id: string; closing_date: string; expected_cash: number; counted_cash: number; difference: number;
+  sales_count: number; sales_total: number; expenses_total: number; by_method: Record<string, number>; note: string | null;
+}
+
+export interface Liquidacion {
+  id: string; barber_membership_id: string; upto: string; sales_count: number; sales_total: number; amount: number;
+  note: string | null; created_at: string;
+}
+
+export interface FilaPendiente { barber_membership_id: string; cantidad: number; vendido: number; a_pagar: number }
+export interface Presupuesto { category: CategoriaGasto; month: string; amount: number }
+
+export interface EntradaAuditoria {
+  id: number; user_id: string | null; at: string; action: "INSERT" | "UPDATE" | "DELETE"; entity: string; entity_id: string | null;
+  detail: Record<string, unknown>;
+}
+
+export interface FilaDia { dia: string; cantidad: number; vendido: number; para_local: number }
+export interface FilaHora { hora: number; cantidad: number; vendido: number }
+export interface FilaTopCliente { client_id: string; nombre: string; visitas: number; gastado: number }

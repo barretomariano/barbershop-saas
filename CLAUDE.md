@@ -20,6 +20,6 @@ Next.js + TypeScript (App Router), Tailwind, shadcn/ui, Supabase (Postgres, Auth
 `npm run dev`, `npm run lint`, `npm run test`, `npm run build`, `npm run typecheck`
 
 ## Etapa actual
-Etapa D: módulos, planes y widgets. Hecho: puesta en marcha del dueño, módulos AGENDA y CLIENTES, agenda con turnos por cobrar, clientes, metas, horarios, alquiler de silla y sueldos fijos, inicio con widgets, recuperar contraseña (migraciones 6 y 7).
-Verificado: lint, tipos, 80 tests de lógica, build, y en Postgres local 232 chequeos de seguridad SQL (147 de etapas anteriores + 85 de agenda, clientes y metas).
-NO verificado todavía: contra el Supabase real ni en un navegador. Pendiente: aplicar la migración 7 en Supabase, publicar en Cloudflare, probar con el primer cliente, diseño y experiencia de usuario, restricciones por plan (ver docs/planes.md).
+Etapa D casi completa: módulos, planes y widgets, agenda, clientes, metas, caja y cierre diario, liquidación de comisiones, gastos recurrentes, proveedores, presupuestos con alertas, reportes y auditoría (migraciones 6, 7 y 8).
+Verificado: lint, tipos, 89 tests de lógica, build, y en Postgres local 315 chequeos de seguridad SQL.
+NO verificado todavía: contra el Supabase real ni en un navegador. Pendiente: aplicar la migración 8 en Supabase, publicar en Cloudflare, diseño y experiencia de usuario, sucursales y permisos configurables (plan Avanzado), y decidir si el plan bloquea funciones (ver docs/planes.md).
