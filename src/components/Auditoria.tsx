@@ -23,12 +23,11 @@ export default function Auditoria({ yo, equipo }: { yo: Membresia; equipo: Membr
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="font-medium">Historial de cambios</h2>
       <button className="text-sm underline self-start" onClick={() => setAbierto((v) => !v)}>{abierto ? "Ocultar" : "Ver los últimos 100 cambios"}</button>
       {abierto && (filas === null ? <p className="texto-suave text-sm">Cargando…</p> : filas.length === 0 ? <p className="texto-suave text-sm">Todavía no hay cambios registrados.</p> : (
         <ul className="flex flex-col gap-2 text-sm">
           {filas.map((f) => (
-            <li key={f.id} className="border-b pb-2" style={{ borderColor: "var(--linea)" }}>
+            <li key={f.id} className="border-b pb-2">
               <p>{describirAuditoria(f)}</p>
               <p className="texto-suave text-xs">{formatearHora(f.at)} · {quien(f.user_id)}</p>
             </li>

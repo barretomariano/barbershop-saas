@@ -8,18 +8,18 @@ import Login from "@/components/Login";
 import NuevaClave from "@/components/NuevaClave";
 import PuestaEnMarcha from "@/components/PuestaEnMarcha";
 import Inicio from "@/components/Inicio";
-import Vender from "@/components/Vender";
-import Resumen from "@/components/Resumen";
-import Ajustes from "@/components/Ajustes";
-import Gastos from "@/components/Gastos";
-import Agenda from "@/components/Agenda";
-import Clientes from "@/components/Clientes";
 import AvisoCierre from "@/components/AvisoCierre";
-import Caja from "@/components/Caja";
-import Reportes from "@/components/Reportes";
+import Agenda from "@/components/Agenda";
+import ResumenHub from "@/components/ResumenHub";
+import AjustesHub from "@/components/AjustesHub";
+import VentaModal, { type TurnoACobrar } from "@/components/VentaModal";
+import { Icono, type NombreIcono } from "@/components/ui";
+import { mostrarBotonVenta, pestanasVisibles, ubicar, type Destino, type SubAjustes, type SubResumen, type Tab } from "@/lib/navegacion";
+import { ACENTO_POR_DEFECTO, aplicarApariencia, esAcento, leerAcentoLocal, leerTema, guardarLocal, CLAVE_ACENTO, type IdAcento, type Tema } from "@/lib/tema";
 
-export type Pestana = "inicio" | "vender" | "agenda" | "clientes" | "resumen" | "reportes" | "caja" | "gastos" | "ajustes";
 const COLUMNAS = "id,business_id,user_id,role,display_name,active,commission_model,commission_bps,commission_configured,fixed_monthly";
+const ICONO_TAB: Record<Tab, NombreIcono> = { inicio: "inicio", agenda: "agenda", resumen: "resumen", ajustes: "ajustes" };
+const TITULO_TAB: Record<Exclude<Tab, "inicio">, string> = { agenda: "Agenda", resumen: "Resumen", ajustes: "Ajustes" };
 
 export default function Raiz() {
   if (!supabaseConfigurado()) return <SinConfigurar />;
@@ -50,7 +50,14 @@ function App() {
 function Panel({ userId }: { userId: string }) {
   const [equipo, setEquipo] = useState<Membresia[] | null>(null);
   const [negocio, setNegocio] = useState<DatosNegocio | null>(null);
-  const [pestana, setPestana] = useState<Pestana>("inicio");
+  const [tab, setTab] = useState<Tab>("inicio");
+  const [subResumen, setSubResumen] = useState<SubResumen>("panorama");
+  const [subAjustes, setSubAjustes] = useState<SubAjustes | null>(null);
+  const [venta, setVenta] = useState<{ turno: TurnoACobrar | null } | null>(null);
+  const [refresco, setRefresco] = useState(0);
+  // Panel solo se dibuja después de iniciar sesión (en el navegador), así que se puede leer el dispositivo directo.
+  const [tema, setTema] = useState<Tema>(() => (typeof window === "undefined" ? "oscuro" : leerTema()));
+  const [acento, setAcento] = useState<IdAcento>(() => (typeof window === "undefined" ? ACENTO_POR_DEFECTO : leerAcentoLocal()));
 
   const [version, setVersion] = useState(0);
   const cargar = useCallback(() => setVersion((v) => v + 1), []);
@@ -61,9 +68,16 @@ function Panel({ userId }: { userId: string }) {
       if (!vivo) return;
       setEquipo(r.equipo);
       setNegocio(r.negocio);
+      // El color del negocio manda sobre lo guardado en este dispositivo.
+      if (r.acento) {
+        setAcento(r.acento);
+        guardarLocal(CLAVE_ACENTO, r.acento);
+      }
     });
     return () => { vivo = false; };
   }, [userId, version]);
+
+  useEffect(() => { aplicarApariencia(tema, acento); }, [tema, acento]);
 
   if (equipo === null) return <Mensaje texto="Cargando…" />;
   const yo = equipo.find((m) => m.user_id === userId);
@@ -82,66 +96,105 @@ function Panel({ userId }: { userId: string }) {
 
   const hayAgenda = negocio.modulos.includes("AGENDA");
   const hayClientes = negocio.modulos.includes("CLIENTES");
-  const gestion = yo.role !== "BARBER";
-  const pestanas: { id: Pestana; texto: string }[] = [
-    { id: "inicio", texto: "Inicio" },
-    { id: "vender", texto: "Vender" },
-    ...(hayAgenda ? [{ id: "agenda" as Pestana, texto: "Agenda" }] : []),
-    ...(hayClientes ? [{ id: "clientes" as Pestana, texto: "Clientes" }] : []),
-    { id: "resumen", texto: "Resumen" },
-    { id: "reportes", texto: "Reportes" },
-    ...(gestion ? [{ id: "caja" as Pestana, texto: "Caja" }, { id: "gastos" as Pestana, texto: "Gastos" }, { id: "ajustes" as Pestana, texto: "Ajustes" }] : []),
-  ];
-  // Si se apagó el módulo de la pestaña abierta, se vuelve al inicio.
-  const activa = pestanas.some((p) => p.id === pestana) ? pestana : "inicio";
+  const pestanas = pestanasVisibles(negocio.modulos);
+  // Si se apagó el módulo de la pestaña abierta (Agenda), se vuelve al inicio.
+  const activa: Tab = pestanas.some((p) => p.id === tab) ? tab : "inicio";
+
+  function irA(d: Destino) {
+    const u = ubicar(d, yo!.role, negocio!.modulos);
+    setTab(u.tab);
+    if (u.tab === "resumen") setSubResumen((u.sub as SubResumen | null) ?? "panorama");
+    if (u.tab === "ajustes") setSubAjustes((u.sub as SubAjustes | null) ?? null);
+    window.scrollTo({ top: 0 });
+  }
+  function irATab(t: Tab) {
+    if (t === activa) {
+      if (t === "ajustes") setSubAjustes(null);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    setTab(t);
+    if (t === "ajustes") setSubAjustes(null);
+    window.scrollTo({ top: 0 });
+  }
+
+  const nombrePila = yo.display_name.split(" ")[0];
+  const rol = yo.role === "OWNER" ? "Dueño" : yo.role === "MANAGER" ? "Encargado" : "Barbero";
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-5 px-5 py-6">
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">{negocio.nombre || "Barbería"}</h1>
-          <p className="texto-suave text-sm">{yo.display_name} · {yo.role === "OWNER" ? "Dueño" : yo.role === "MANAGER" ? "Encargado" : "Barbero"}</p>
-        </div>
-        <button className="text-sm underline" onClick={() => getSupabase().auth.signOut()}>Salir</button>
-      </header>
+    <>
+      <main className="pantalla flex flex-col gap-5">
+        <header className="flex items-center justify-between gap-3">
+          {activa === "inicio" ? (
+            <div className="min-w-0">
+              <p className="texto-suave truncate text-sm font-semibold">{negocio.nombre || "Barbería"}</p>
+              <h1 className="titulo truncate text-[28px] font-semibold leading-tight">Hola, {nombrePila}</h1>
+            </div>
+          ) : (
+            <h1 className="titulo text-[28px] font-semibold leading-tight">{TITULO_TAB[activa]}</h1>
+          )}
+          <button className="avatar flex-none" aria-label={`${yo.display_name}, ${rol}. Ir a ajustes`} onClick={() => irA("ajustes")}>
+            {nombrePila.slice(0, 1).toUpperCase()}
+          </button>
+        </header>
 
-      <nav className="flex flex-wrap gap-2" aria-label="Secciones">
-        {pestanas.map((p) => (
-          <button key={p.id} onClick={() => setPestana(p.id)} aria-current={activa === p.id}
-            className={`chip ${activa === p.id ? "chip-activo" : ""}`}>{p.texto}</button>
-        ))}
+        {hayAgenda && activa !== "agenda" && <AvisoCierre negocio={yo.business_id} onVer={() => irA("agenda")} />}
+
+        {activa === "inicio" && <Inicio yo={yo} equipo={equipo} modulos={negocio.modulos} irA={irA} refresco={refresco} />}
+        {activa === "agenda" && hayAgenda && (
+          <Agenda yo={yo} equipo={equipo} hayClientes={hayClientes} refresco={refresco} onCobrar={(t) => setVenta({ turno: t })} />
+        )}
+        {activa === "resumen" && <ResumenHub key={refresco} yo={yo} equipo={equipo} hayClientes={hayClientes} sub={subResumen} onSub={setSubResumen} />}
+        {activa === "ajustes" && (
+          <AjustesHub yo={yo} equipo={equipo} negocio={negocio} sub={subAjustes} onSub={setSubAjustes} onCambio={cargar}
+            tema={tema} acento={acento} onTema={setTema} onAcento={setAcento} />
+        )}
+      </main>
+
+      {mostrarBotonVenta(activa) && !venta && (
+        <button className="fab" onClick={() => setVenta({ turno: null })} aria-label="Nueva venta">
+          <Icono nombre="mas" tam={22} /> Nueva venta
+        </button>
+      )}
+
+      <nav className="nav-inferior" aria-label="Secciones">
+        <div>
+          {pestanas.map((p) => (
+            <button key={p.id} className="nav-item" aria-current={activa === p.id ? "page" : undefined} onClick={() => irATab(p.id)}>
+              <Icono nombre={ICONO_TAB[p.id]} tam={23} />
+              {p.texto}
+            </button>
+          ))}
+        </div>
       </nav>
 
-      {hayAgenda && activa !== "agenda" && <AvisoCierre negocio={yo.business_id} onVer={() => setPestana("agenda")} />}
-
-      {activa === "inicio" && <Inicio yo={yo} equipo={equipo} modulos={negocio.modulos} irA={setPestana} />}
-      {activa === "vender" && <Vender yo={yo} equipo={equipo} hayClientes={hayClientes} />}
-      {activa === "agenda" && hayAgenda && <Agenda yo={yo} equipo={equipo} hayClientes={hayClientes} />}
-      {activa === "clientes" && hayClientes && <Clientes yo={yo} />}
-      {activa === "resumen" && <Resumen yo={yo} equipo={equipo} />}
-      {activa === "reportes" && <Reportes yo={yo} hayClientes={hayClientes} />}
-      {activa === "caja" && gestion && <Caja yo={yo} equipo={equipo} />}
-      {activa === "gastos" && gestion && <Gastos yo={yo} />}
-      {activa === "ajustes" && gestion && <Ajustes yo={yo} equipo={equipo} negocio={negocio} onCambio={cargar} />}
-    </main>
+      {venta && (
+        <VentaModal yo={yo} equipo={equipo} hayClientes={hayClientes} turno={venta.turno}
+          onCerrar={() => setVenta(null)} onRegistrada={() => setRefresco((r) => r + 1)} />
+      )}
+    </>
   );
 }
 
-async function cargarDatos(userId: string): Promise<{ equipo: Membresia[]; negocio: DatosNegocio | null }> {
+async function cargarDatos(userId: string): Promise<{ equipo: Membresia[]; negocio: DatosNegocio | null; acento: IdAcento | null }> {
   const sb = getSupabase();
   const { data } = await sb.from("memberships").select(COLUMNAS).eq("active", true);
   const filas = (data as Membresia[]) ?? [];
   const mia = filas.find((m) => m.user_id === userId);
-  if (!mia) return { equipo: filas, negocio: null };
+  if (!mia) return { equipo: filas, negocio: null, acento: null };
 
-  const [{ data: b }, { data: mods }] = await Promise.all([
+  const [{ data: b }, { data: mods }, { data: color }] = await Promise.all([
     sb.from("businesses").select("name,plan,setup_completed_at").eq("id", mia.business_id).single(),
     sb.from("business_modules").select("module,enabled").eq("business_id", mia.business_id),
+    // Aparte: si todavía no existe la columna (migración 9), solo falla esta consulta y la app sigue con el color por defecto.
+    sb.from("businesses").select("accent").eq("id", mia.business_id).maybeSingle(),
   ]);
+  const acentoDb = (color as { accent: unknown } | null)?.accent;
   const fila = b as { name: string; plan: PlanNegocio; setup_completed_at: string | null } | null;
   const modulos = ((mods as { module: ModuloNegocio; enabled: boolean }[]) ?? []).filter((m) => m.enabled).map((m) => m.module);
   return {
     equipo: filas.filter((m) => m.business_id === mia.business_id),
+    acento: esAcento(acentoDb) ? acentoDb : null,
     negocio: {
       nombre: fila?.name ?? "",
       plan: fila?.plan ?? "BASICO",

@@ -120,7 +120,7 @@ export default function Reportes({ yo, hayClientes }: { yo: Membresia; hayClient
 
 function Dato({ titulo, valor }: { titulo: string; valor: string }) {
   return (
-    <div className="rounded-xl border p-3" style={{ borderColor: "var(--linea)" }}>
+    <div className="tarjeta">
       <p className="texto-suave text-xs">{titulo}</p>
       <p className="text-xl font-semibold">{valor}</p>
     </div>

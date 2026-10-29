@@ -77,7 +77,7 @@ export default function Resumen({ yo, equipo }: Props) {
               <h2 className="mb-2 font-medium">Por barbero</h2>
               <ul className="flex flex-col gap-2 text-sm">
                 {porBarbero.map(({ m, cantidad, vendido, gana }) => (
-                  <li key={m.id} className="flex justify-between border-b pb-2" style={{ borderColor: "var(--linea)" }}>
+                  <li key={m.id} className="flex justify-between border-b pb-2">
                     <span>{m.display_name} · {cantidad} {cantidad === 1 ? "venta" : "ventas"}</span>
                     <span>{formatearARS(vendido)} (gana {formatearARS(gana)})</span>
                   </li>
@@ -94,7 +94,7 @@ export default function Resumen({ yo, equipo }: Props) {
             {ventas.length === 0 ? <p className="texto-suave text-sm">No hay ventas en este período.</p> : (
               <ul className="flex flex-col gap-2 text-sm">
                 {ventas.map((v) => (
-                  <li key={v.id} className="flex items-start justify-between gap-3 border-b pb-2" style={{ borderColor: "var(--linea)" }}>
+                  <li key={v.id} className="flex items-start justify-between gap-3 border-b pb-2">
                     <div className={v.status === "CANCELED" ? "line-through opacity-60" : ""}>
                       <p>{formatearARS(v.amount)} · {v.service_name ?? "Sin servicio"}</p>
                       <p className="texto-suave">{formatearHora(v.sold_at)} · {nombre(v.barber_membership_id)} · {v.payment_method}</p>
@@ -134,7 +134,7 @@ async function pedirDatos(periodo: Periodo, negocio: string): Promise<{ ventas: 
 
 function Dato({ titulo, valor }: { titulo: string; valor: string }) {
   return (
-    <div className="rounded-xl border p-4" style={{ borderColor: "var(--linea)" }}>
+    <div className="tarjeta">
       <p className="texto-suave text-sm">{titulo}</p>
       <p className="text-2xl font-semibold">{valor}</p>
     </div>

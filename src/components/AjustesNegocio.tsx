@@ -30,7 +30,6 @@ export function Modulos({ yo, negocio, onCambio }: { yo: Membresia; negocio: Dat
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="font-medium">Módulos</h2>
       <p className="texto-suave text-sm">Plan {NOMBRE_PLAN[negocio.plan]}. Si apagás un módulo, sus datos se conservan y vuelven a verse al encenderlo.</p>
       <ul className="flex flex-col gap-2">
         {MODULOS.map((m) => (
@@ -93,7 +92,6 @@ export function Metas({ yo, equipo }: { yo: Membresia; equipo: Membresia[] }) {
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="font-medium">Metas de este mes</h2>
       {campo("negocio", "Meta del negocio")}
       {barberos.map((b) => campo(b.id, b.display_name))}
       <div className="flex items-center gap-3">
@@ -144,7 +142,6 @@ export function Horarios({ yo, equipo }: { yo: Membresia; equipo: Membresia[] })
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="font-medium">Horarios de trabajo</h2>
       <p className="texto-suave text-sm">Si no marcás ningún día, se pueden agendar turnos a cualquier hora.</p>
       <select className="campo" value={persona} onChange={(e) => { setFranjas(null); setPersona(e.target.value); }} aria-label="Persona">
         {equipo.map((m) => <option key={m.id} value={m.id}>{m.display_name}</option>)}

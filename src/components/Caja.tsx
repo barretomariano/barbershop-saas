@@ -73,7 +73,7 @@ function CierreDia({ yo, version, onCambio }: { yo: Membresia; version: number; 
       </div>
 
       {cerrado ? (
-        <div className="rounded-xl border p-4 text-sm" style={{ borderColor: "var(--acento)" }}>
+        <div className="tarjeta text-sm" style={{ borderColor: "var(--acento)" }}>
           <p className="font-medium">Caja cerrada</p>
           <p>Esperado en efectivo: {formatearARS(cerrado.expected_cash)}</p>
           <p>Contado: {formatearARS(cerrado.counted_cash)}</p>
@@ -83,7 +83,7 @@ function CierreDia({ yo, version, onCambio }: { yo: Membresia; version: number; 
           {cerrado.note && <p className="texto-suave">{cerrado.note}</p>}
         </div>
       ) : (
-        <div className="flex flex-col gap-3 rounded-xl border p-4" style={{ borderColor: "var(--linea)" }}>
+        <div className="flex flex-col gap-3 tarjeta">
           <p className="text-sm">{cant} ventas · {formatearARS(total)} · gastos del día {formatearARS(totalGastos)}</p>
           <ul className="texto-suave text-sm">
             {MEDIOS_PAGO.map((m) => ({ ...m, t: ventas.filter((v) => v.payment_method === m.valor).reduce((s, v) => s + v.vendido, 0) })).filter((m) => m.t > 0)
@@ -159,7 +159,7 @@ function Liquidaciones({ yo, equipo, version, onCambio }: { yo: Membresia; equip
       {pendiente.length === 0 ? <p className="texto-suave text-sm">No hay comisiones pendientes hasta esa fecha.</p> : (
         <ul className="flex flex-col gap-2">
           {pendiente.map((f) => (
-            <li key={f.barber_membership_id} className="flex items-center justify-between gap-3 rounded-xl border p-3 text-sm" style={{ borderColor: "var(--linea)" }}>
+            <li key={f.barber_membership_id} className="flex items-center justify-between gap-3 tarjeta text-sm">
               <span><span className="block font-medium">{nombre(f.barber_membership_id)}</span><span className="texto-suave">{f.cantidad} ventas · {formatearARS(f.vendido)} vendidos</span></span>
               <button className="boton-chico" disabled={enviando !== null} onClick={() => liquidar(f)}>Pagar {formatearARS(f.a_pagar)}</button>
             </li>

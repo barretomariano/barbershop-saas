@@ -4,12 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { getSupabase } from "@/lib/supabase";
 import { formatearARS } from "@/lib/dinero";
 import { parsearMonto, porcentajeABps } from "@/lib/validacion";
-import type { DatosNegocio, ModeloComision, Membresia, Servicio } from "@/lib/tipos";
-import Equipo from "@/components/Equipo";
-import { Horarios, Metas, Modulos } from "@/components/AjustesNegocio";
-import Auditoria from "@/components/Auditoria";
-
-interface Props { yo: Membresia; equipo: Membresia[]; negocio: DatosNegocio; onCambio: () => void }
+import type { ModeloComision, Membresia, Servicio } from "@/lib/tipos";
 
 const MODELOS: { valor: ModeloComision; etiqueta: string }[] = [
   { valor: "PERCENT", etiqueta: "Porcentaje de cada venta" },
@@ -17,29 +12,13 @@ const MODELOS: { valor: ModeloComision; etiqueta: string }[] = [
   { valor: "SALARY", etiqueta: "Sueldo fijo (0% por venta)" },
 ];
 
-export default function Ajustes({ yo, equipo, negocio, onCambio }: Props) {
-  const esOwner = yo.role === "OWNER";
-  const hayAgenda = negocio.modulos.includes("AGENDA");
+export function Comisiones({ equipo, onCambio }: { equipo: Membresia[]; onCambio: () => void }) {
+  const barberos = equipo.filter((m) => m.role === "BARBER");
   return (
-    <div className="flex flex-col gap-8">
-      <Servicios yo={yo} hayAgenda={hayAgenda} />
-      {hayAgenda && <Horarios yo={yo} equipo={equipo} />}
-      {esOwner ? (
-        <>
-          <Modulos yo={yo} negocio={negocio} onCambio={onCambio} />
-          <Metas yo={yo} equipo={equipo} />
-          <Auditoria yo={yo} equipo={equipo} />
-          <Equipo negocio={yo.business_id} onCambio={onCambio} />
-          <section className="flex flex-col gap-4">
-            <h2 className="font-medium">Comisión de cada barbero</h2>
-            {equipo.filter((m) => m.role === "BARBER").map((m) => <FilaComision key={m.id} m={m} onCambio={onCambio} />)}
-            {equipo.filter((m) => m.role === "BARBER").length === 0 && <p className="texto-suave text-sm">Todavía no hay barberos en el equipo.</p>}
-          </section>
-        </>
-      ) : (
-        <p className="texto-suave text-sm">Las comisiones las configura el dueño.</p>
-      )}
-    </div>
+    <section className="flex flex-col gap-4">
+      {barberos.map((m) => <FilaComision key={m.id} m={m} onCambio={onCambio} />)}
+      {barberos.length === 0 && <p className="texto-suave text-sm">Todavía no hay barberos en el equipo.</p>}
+    </section>
   );
 }
 
@@ -60,7 +39,7 @@ function FilaComision({ m, onCambio }: { m: Membresia; onCambio: () => void }) {
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl border p-4" style={{ borderColor: "var(--linea)" }}>
+    <div className="flex flex-col gap-2 tarjeta">
       <p className="font-medium">{m.display_name} {!m.commission_configured && <span className="text-xs text-red-600">· sin configurar, no puede vender</span>}</p>
       <select className="campo" value={modelo} onChange={(e) => setModelo(e.target.value as ModeloComision)}>
         {MODELOS.map((x) => <option key={x.valor} value={x.valor}>{x.etiqueta}</option>)}
@@ -85,7 +64,7 @@ function FilaComision({ m, onCambio }: { m: Membresia; onCambio: () => void }) {
   );
 }
 
-function Servicios({ yo, hayAgenda }: { yo: Membresia; hayAgenda: boolean }) {
+export function Servicios({ yo, hayAgenda }: { yo: Membresia; hayAgenda: boolean }) {
   const [lista, setLista] = useState<Servicio[]>([]);
   const [nombre, setNombre] = useState("");
   const [precio, setPrecio] = useState("");
@@ -120,7 +99,6 @@ function Servicios({ yo, hayAgenda }: { yo: Membresia; hayAgenda: boolean }) {
   if (yo.role === "BARBER") return null;
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="font-medium">Servicios</h2>
       <ul className="flex flex-col gap-1 text-sm">
         {lista.map((s) => (
           <li key={s.id} className="flex justify-between">

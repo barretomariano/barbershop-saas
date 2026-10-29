@@ -106,10 +106,9 @@ export default function Equipo({ negocio, onCambio }: Props) {
 
   return (
     <section className="flex flex-col gap-4">
-      <h2 className="font-medium">Equipo</h2>
 
       {credencial && (
-        <div role="status" className="flex flex-col gap-2 rounded-xl border p-4" style={{ borderColor: "var(--linea)" }}>
+        <div role="status" className="flex flex-col gap-2 tarjeta">
           <p className="font-medium">{credencial.motivo === "alta" ? `Listo: ${credencial.nombre} ya puede ingresar` : `Nueva clave de ${credencial.nombre}`}</p>
           <p className="text-sm">Usuario: <strong>{credencial.usuario}</strong></p>
           <p className="text-sm">Clave: <strong>{credencial.clave}</strong></p>
@@ -126,7 +125,7 @@ export default function Equipo({ negocio, onCambio }: Props) {
       {cargando ? <p className="texto-suave text-sm">Cargando…</p> : (
         <ul className="flex flex-col gap-2 text-sm">
           {miembros.map((m) => (
-            <li key={m.id} className="flex flex-col gap-1 border-b pb-2" style={{ borderColor: "var(--linea)" }}>
+            <li key={m.id} className="flex flex-col gap-1 border-b pb-2">
               <div className={`flex justify-between gap-3 ${m.active ? "" : "opacity-60"}`}>
                 <span>{m.display_name} · {ROLES[m.role]}{!m.active && " · desactivado"}</span>
                 <span className="texto-suave">{m.username ?? ""}</span>
@@ -152,7 +151,7 @@ export default function Equipo({ negocio, onCambio }: Props) {
         </ul>
       )}
 
-      <form onSubmit={agregar} className="flex flex-col gap-2 rounded-xl border p-4" style={{ borderColor: "var(--linea)" }}>
+      <form onSubmit={agregar} className="flex flex-col gap-2 tarjeta">
         <h3 className="font-medium">Agregar una persona</h3>
         <input className="campo" placeholder="Nombre (ej. Juan Pérez)" maxLength={80} value={nombre} onChange={(e) => setNombre(e.target.value)} />
         <input className="campo" placeholder="Usuario para ingresar (ej. juan.perez)" autoCapitalize="none" spellCheck={false} maxLength={30} value={usuario} onChange={(e) => setUsuario(e.target.value)} />

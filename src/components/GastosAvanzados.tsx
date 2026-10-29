@@ -69,7 +69,7 @@ function Presupuestos({ yo, version }: { yo: Membresia; version: number }) {
     <section className="flex flex-col gap-3">
       <h2 className="font-medium">Presupuesto del mes</h2>
       {alertas.map((a) => (
-        <p key={a.categoria} role="status" className={`rounded-xl border p-3 text-sm ${a.nivel === "excedido" ? "text-red-600" : ""}`} style={{ borderColor: a.nivel === "excedido" ? "#dc2626" : "var(--acento)" }}>
+        <p key={a.categoria} role="status" className={`tarjeta text-sm ${a.nivel === "excedido" ? "text-red-600" : ""}`} style={{ borderColor: a.nivel === "excedido" ? "var(--peligro)" : "var(--acento)" }}>
           {a.nivel === "excedido" ? "Te pasaste" : "Estás cerca del límite"} en {etiqueta(a.categoria)}: {formatearARS(a.gastado)} de {formatearARS(a.presupuesto)}.
         </p>
       ))}
@@ -147,7 +147,7 @@ function Recurrentes({ yo, version, onCambio, onGenerado }: { yo: Membresia; ver
         ))}
         {lista.length === 0 && <li className="texto-suave">Todavía no cargaste ninguno.</li>}
       </ul>
-      <div className="flex flex-col gap-2 rounded-xl border p-3" style={{ borderColor: "var(--linea)" }}>
+      <div className="flex flex-col gap-2 tarjeta">
         <select className="campo" value={categoria} onChange={(e) => setCategoria(e.target.value as CategoriaGasto)} aria-label="Categoría">
           {CATEGORIAS_GASTO.map((c) => <option key={c.valor} value={c.valor}>{c.etiqueta}</option>)}
         </select>

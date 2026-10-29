@@ -102,7 +102,7 @@ export default function Gastos({ yo }: Props) {
 
   return (
     <section className="flex flex-col gap-5">
-      <div className="flex flex-col gap-2 rounded-xl border p-4" style={{ borderColor: "var(--linea)" }}>
+      <div className="flex flex-col gap-2 tarjeta">
         <h2 className="font-medium">Cargar un gasto</h2>
         <select className="campo" value={categoria} onChange={(e) => setCategoria(e.target.value as CategoriaGasto)}>
           {CATEGORIAS_GASTO.map((c) => <option key={c.valor} value={c.valor}>{c.etiqueta}</option>)}
@@ -143,7 +143,7 @@ export default function Gastos({ yo }: Props) {
             {gastos.length === 0 ? <p className="texto-suave text-sm">No hay gastos en este período.</p> : (
               <ul className="flex flex-col gap-2 text-sm">
                 {gastos.map((g) => (
-                  <li key={g.id} className="flex items-start justify-between gap-3 border-b pb-2" style={{ borderColor: "var(--linea)" }}>
+                  <li key={g.id} className="flex items-start justify-between gap-3 border-b pb-2">
                     <div className={g.status === "CANCELED" ? "line-through opacity-60" : ""}>
                       <p>{formatearARS(g.amount)} · {etiqueta(g.category)}</p>
                       <p className="texto-suave">{formatearHora(g.spent_at)}{g.description ? ` · ${g.description}` : ""}</p>
@@ -165,7 +165,7 @@ export default function Gastos({ yo }: Props) {
 
 function Dato({ titulo, valor }: { titulo: string; valor: string }) {
   return (
-    <div className="rounded-xl border p-4" style={{ borderColor: "var(--linea)" }}>
+    <div className="tarjeta">
       <p className="texto-suave text-sm">{titulo}</p>
       <p className="text-2xl font-semibold">{valor}</p>
     </div>

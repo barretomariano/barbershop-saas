@@ -21,8 +21,15 @@ Next.js + TypeScript (App Router), Tailwind, shadcn/ui, Supabase (Postgres, Auth
 ## Comandos
 `npm run dev`, `npm run lint`, `npm run test`, `npm run build`, `npm run typecheck`
 
+## Diseño y experiencia (Etapa E)
+- Navegación: 4 pestañas fijas abajo (Inicio, Agenda, Resumen, Ajustes). Agenda desaparece si el módulo está apagado (`src/lib/navegacion.ts`).
+- El botón flotante de Nueva venta existe SOLO en Inicio. Nueva venta es un modal por pasos (`VentaModal` + `src/lib/venta.ts`): cada elección desbloquea la siguiente.
+- Resumen reúne Panorama (bruto/neto/desglose), Ventas, Reportes, Caja y Gastos. Clientes, Servicios, Equipo, Comisiones, Horarios, Metas, Módulos, Apariencia e Historial viven en Ajustes.
+- Todo widget del inicio es clickeable y lleva a su detalle; cada persona puede ordenar u ocultar los suyos.
+- Estilo: tokens CSS en `globals.css` (oscuro por defecto, claro opcional por dispositivo). El dueño elige un color de énfasis de una paleta cerrada (`src/lib/tema.ts`, guardado en `businesses.accent`, migración 9). No usar colores sueltos ni emojis en la interfaz; usar `var(--acento)` y los íconos de `components/ui.tsx`.
+- Tipografías propias (Instrument Sans y Bricolage Grotesque) autoalojadas con fontsource: no depender de Google Fonts.
+
 ## Etapa actual
-Etapa D casi completa: módulos, planes y widgets, agenda, clientes, metas, caja y cierre diario, liquidación de comisiones, gastos recurrentes, proveedores, presupuestos con alertas, reportes y auditoría (migraciones 6, 7 y 8).
-Verificado por el dueño en el Supabase real y en navegador (según su nota): lo hecho hasta la migración 7 y probado con el primer cliente.
-Verificado por Claude solo en local: lint, tipos, 89 tests de lógica, build y 315 chequeos de seguridad SQL en Postgres local (incluye la migración 8).
-NO verificado todavía: la migración 8 y sus pantallas (Caja, Reportes, proveedores, recurrentes, presupuestos, auditoría) contra el Supabase real ni en navegador. Pendiente: diseño y experiencia de usuario, sucursales y permisos configurables (plan Avanzado) y restricciones por plan (ver docs/planes.md).
+Etapa E (diseño y experiencia) implementada en código. Migración 9 (color de énfasis) pendiente de aplicar en Supabase: sin ella la app funciona con el color por defecto y avisa al dueño al intentar cambiarlo.
+Verificado por Claude solo en local: lint, tipos, tests de lógica y build. NO verificado: ninguna pantalla nueva en navegador ni contra el Supabase real, ni la migración 9 en Postgres.
+Pendiente: sucursales y permisos configurables (plan Avanzado) y restricciones por plan (ver docs/planes.md).

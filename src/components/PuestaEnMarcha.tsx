@@ -42,10 +42,10 @@ export default function PuestaEnMarcha({ yo, negocio, onListo }: Props) {
           return (
             <li key={m.valor}>
               <button type="button" onClick={() => alternar(m.valor)} aria-pressed={activo}
-                className="flex w-full items-start gap-3 rounded-xl border p-4 text-left"
+                className="flex w-full items-start gap-3 tarjeta text-left"
                 style={{ borderColor: activo ? "var(--acento)" : "var(--linea)" }}>
                 <span aria-hidden className="mt-1 inline-block h-5 w-5 shrink-0 rounded border text-center text-xs leading-5"
-                  style={{ borderColor: "var(--acento)", background: activo ? "var(--acento)" : "transparent", color: "var(--fondo)" }}>
+                  style={{ borderColor: "var(--acento)", background: activo ? "var(--acento)" : "transparent", color: "var(--tinta-acento)" }}>
                   {activo ? "✓" : ""}
                 </span>
                 <span>

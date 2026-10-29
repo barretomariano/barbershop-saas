@@ -26,7 +26,7 @@ export default function AvisoCierre({ negocio, onVer }: { negocio: string; onVer
 
   if (cantidad === 0) return null;
   return (
-    <div role="status" className="flex items-center justify-between gap-3 rounded-xl border p-3 text-sm" style={{ borderColor: "var(--acento)" }}>
+    <div role="status" className="flex items-center justify-between gap-3 tarjeta text-sm" style={{ borderColor: "var(--acento)" }}>
       <span>{cantidad === 1 ? "Tenés 1 turno por cerrar" : `Tenés ${cantidad} turnos por cerrar`} (cobrar o cancelar).</span>
       <button className="boton-chico" onClick={onVer}>Ver</button>
     </div>

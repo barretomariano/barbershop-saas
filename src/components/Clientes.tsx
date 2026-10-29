@@ -39,7 +39,7 @@ export default function Clientes({ yo }: { yo: Membresia }) {
       {visibles.length === 0 && <p className="texto-suave text-sm">{lista.length === 0 ? "Todavía no cargaste clientes." : "No hay clientes con esa búsqueda."}</p>}
       <ul className="flex flex-col gap-2">
         {visibles.map((c) => (
-          <li key={c.id} className="rounded-xl border p-3" style={{ borderColor: "var(--linea)" }}>
+          <li key={c.id} className="tarjeta">
             <button className="flex w-full items-center justify-between text-left" onClick={() => setAbierto(abierto === c.id ? null : c.id)} aria-expanded={abierto === c.id}>
               <span className="font-medium">{c.name}{!c.active && <span className="texto-suave text-xs"> · desactivado</span>}</span>
               <span className="texto-suave text-sm">{c.phone ?? ""}</span>
@@ -70,7 +70,7 @@ function FormCliente({ negocio, onListo }: { negocio: string; onListo: () => voi
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border p-4" style={{ borderColor: "var(--linea)" }}>
+    <div className="flex flex-col gap-3 tarjeta">
       <input className="campo" placeholder="Nombre" value={nombre} maxLength={80} onChange={(e) => setNombre(e.target.value)} />
       <input className="campo" placeholder="Teléfono (opcional)" inputMode="tel" value={telefono} onChange={(e) => setTelefono(e.target.value)} />
       <input className="campo" placeholder="Notas (opcional)" value={notas} maxLength={500} onChange={(e) => setNotas(e.target.value)} />
@@ -119,7 +119,7 @@ function Ficha({ c, gestion, onCambio }: { c: Cliente; gestion: boolean; onCambi
   const wa = c.phone ? telefonoParaWhatsApp(c.phone) : null;
 
   return (
-    <div className="mt-3 flex flex-col gap-3 border-t pt-3" style={{ borderColor: "var(--linea)" }}>
+    <div className="mt-3 flex flex-col gap-3 border-t pt-3">
       <input className="campo" aria-label="Nombre" value={nombre} maxLength={80} onChange={(e) => setNombre(e.target.value)} />
       <input className="campo" aria-label="Teléfono" inputMode="tel" placeholder="Teléfono" value={telefono} onChange={(e) => setTelefono(e.target.value)} />
       <input className="campo" aria-label="Notas" placeholder="Notas" value={notas} maxLength={500} onChange={(e) => setNotas(e.target.value)} />

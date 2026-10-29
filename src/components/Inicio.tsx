@@ -14,9 +14,10 @@ import { esPorCerrar, ETIQUETA_ESTADO, horaCorta, nombreCliente, rangoDia, sumar
 import {
   CATALOGO, layoutParaGuardar, layoutPorDefecto, moverWidget, sanearLayout, widgetsDisponibles, type IdWidget,
 } from "@/lib/widgets";
-import type { Pestana } from "@/app/page";
+import type { Destino } from "@/lib/navegacion";
+import { Cargando, EncabezadoHoja, Hoja, Icono, Segmentado } from "@/components/ui";
 
-interface Props { yo: Membresia; equipo: Membresia[]; modulos: ModuloNegocio[]; irA: (p: Pestana) => void }
+interface Props { yo: Membresia; equipo: Membresia[]; modulos: ModuloNegocio[]; irA: (d: Destino) => void; refresco?: number }
 
 interface Datos {
   actual: FilaResumenVentas[];
@@ -36,7 +37,7 @@ interface Datos {
 
 const suma = (f: FilaResumenVentas[], k: "vendido" | "para_barbero" | "para_local" | "cantidad") => f.reduce((s, x) => s + x[k], 0);
 
-export default function Inicio({ yo, equipo, modulos, irA }: Props) {
+export default function Inicio({ yo, equipo, modulos, irA, refresco = 0 }: Props) {
   const gestion = yo.role !== "BARBER";
   const hayAgenda = modulos.includes("AGENDA");
   const [periodo, setPeriodo] = useState<Periodo>("mes");
@@ -65,7 +66,7 @@ export default function Inicio({ yo, equipo, modulos, irA }: Props) {
       setDatos(r.datos);
     });
     return () => { vivo = false; };
-  }, [yo, periodo, gestion, hayAgenda]);
+  }, [yo, periodo, gestion, hayAgenda, refresco]);
 
   const guardarLayout = useCallback(async (ids: IdWidget[]) => {
     setLayout(ids);
@@ -78,27 +79,31 @@ export default function Inicio({ yo, equipo, modulos, irA }: Props) {
     }
   }, [yo.business_id, yo.user_id]);
 
-  if (layout === null || datos === null) return <p className="texto-suave">Cargando…</p>;
+  if (layout === null || datos === null) return <Cargando filas={3} />;
 
   const nombre = (id: string) => equipo.find((m) => m.id === id)?.display_name ?? "—";
 
   return (
     <section className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap gap-2">
-          {PERIODOS.map((p) => (
-            <button key={p.valor} onClick={() => setPeriodo(p.valor)} className={`chip ${periodo === p.valor ? "chip-activo" : ""}`}>{p.etiqueta}</button>
-          ))}
-        </div>
-        <button className="text-sm underline" onClick={() => setEditando((v) => !v)}>{editando ? "Listo" : "Personalizar"}</button>
+      <div className="flex items-center justify-between gap-2">
+        <Segmentado etiqueta="Período" valor={periodo} onCambio={setPeriodo}
+          opciones={PERIODOS.map((p) => ({ valor: p.valor, texto: p.valor === "semana" ? "7 días" : p.etiqueta.replace("Este ", "") }))} />
+        <button className="chip inline-flex items-center gap-2" style={{ minHeight: 46 }} onClick={() => setEditando(true)} aria-label="Personalizar el inicio">
+          <Icono nombre="editar" tam={16} /> Editar
+        </button>
       </div>
 
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
 
-      {editando && <Personalizar rol={yo.role} modulos={modulos} layout={layout} onCambio={guardarLayout} />}
+      {editando && (
+        <Hoja titulo="Personalizar inicio" onCerrar={() => setEditando(false)}>
+          <EncabezadoHoja titulo="Tu inicio" detalle="Ordená y elegí lo que ves. Cada bloque abre su detalle." onCerrar={() => setEditando(false)} />
+          <Personalizar rol={yo.role} modulos={modulos} layout={layout} onCambio={guardarLayout} />
+        </Hoja>
+      )}
 
       {layout.length === 0 && !editando && (
-        <p className="texto-suave text-sm">No tenés widgets en el inicio. Tocá “Personalizar” para elegirlos.</p>
+        <p className="texto-suave text-sm">No tenés widgets en el inicio. Tocá “Editar” para elegirlos.</p>
       )}
 
       {layout.map((id) => (
@@ -113,9 +118,8 @@ function Personalizar({ rol, modulos, layout, onCambio }: { rol: Membresia["role
   const ocultos = disponibles.filter((w) => !layout.includes(w.id));
   const titulo = (id: IdWidget) => CATALOGO.find((w) => w.id === id)?.titulo ?? id;
   return (
-    <div className="flex flex-col gap-3 rounded-xl border p-4 text-sm" style={{ borderColor: "var(--linea)" }}>
-      <p className="font-medium">Tu inicio</p>
-      <ul className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3 text-sm">
+            <ul className="flex flex-col gap-2">
         {layout.map((id, i) => (
           <li key={id} className="flex items-center justify-between gap-2">
             <span>{titulo(id)}</span>
@@ -145,10 +149,13 @@ function Personalizar({ rol, modulos, layout, onCambio }: { rol: Membresia["role
   );
 }
 
-function Tarjeta({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+function Tarjeta({ titulo, ir, orbe, children }: { titulo: string; ir: () => void; orbe?: boolean; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-2 rounded-xl border p-4" style={{ borderColor: "var(--linea)" }}>
-      <h2 className="text-sm font-medium texto-suave">{titulo}</h2>
+    <div role="link" tabIndex={0} className={`${orbe ? "tarjeta-orbe" : "tarjeta"} tarjeta-click flex flex-col gap-2`}
+      onClick={ir} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); ir(); } }}>
+      <h2 className="titulo-tarjeta" style={orbe ? { color: "rgba(244,242,238,0.72)" } : undefined}>
+        <span>{titulo}</span><Icono nombre="siguiente" tam={16} />
+      </h2>
       {children}
     </div>
   );
@@ -162,7 +169,7 @@ function Barra({ pct }: { pct: number }) {
   );
 }
 
-interface WProps { id: IdWidget; yo: Membresia; gestion: boolean; periodo: Periodo; datos: Datos; nombre: (id: string) => string; equipo: Membresia[]; irA: (p: Pestana) => void }
+interface WProps { id: IdWidget; yo: Membresia; gestion: boolean; periodo: Periodo; datos: Datos; nombre: (id: string) => string; equipo: Membresia[]; irA: (d: Destino) => void }
 
 function Widget({ id, yo, gestion, periodo, datos, nombre, irA }: WProps) {
   const vendido = suma(datos.actual, "vendido");
@@ -170,8 +177,8 @@ function Widget({ id, yo, gestion, periodo, datos, nombre, irA }: WProps) {
   if (id === "ventas") {
     const v = variacion(vendido, suma(datos.anterior, "vendido"));
     return (
-      <Tarjeta titulo="Ventas">
-        <p className="text-3xl font-semibold">{formatearARS(vendido)}</p>
+      <Tarjeta titulo="Ventas" orbe ir={() => irA("ventas")}>
+        <p className="monto text-5xl">{formatearARS(vendido)}</p>
         <p className="texto-suave text-sm">{suma(datos.actual, "cantidad")} ventas · {textoVariacion(v)}</p>
       </Tarjeta>
     );
@@ -180,7 +187,7 @@ function Widget({ id, yo, gestion, periodo, datos, nombre, irA }: WProps) {
   if (id === "ganancia") {
     if (!gestion) {
       return (
-        <Tarjeta titulo="Tu ganancia">
+        <Tarjeta titulo="Tu ganancia" ir={() => irA("panorama")}>
           <p className="text-3xl font-semibold">{formatearARS(suma(datos.actual, "para_barbero"))}</p>
           <p className="texto-suave text-sm">De {formatearARS(vendido)} vendidos</p>
         </Tarjeta>
@@ -191,7 +198,7 @@ function Widget({ id, yo, gestion, periodo, datos, nombre, irA }: WProps) {
       alquilerSilla: datos.fijos.alquiler, sueldos: datos.fijos.sueldos, incluirFijos: periodo === "mes",
     });
     return (
-      <Tarjeta titulo="Ganancia del local">
+      <Tarjeta titulo="Ganancia del local" ir={() => irA("panorama")}>
         <div className="grid grid-cols-2 gap-3">
           <div><p className="texto-suave text-xs">Bruta (todo lo vendido)</p><p className="text-xl font-semibold">{formatearARS(g.bruta)}</p></div>
           <div><p className="texto-suave text-xs">Neta (queda en el local)</p><p className="text-xl font-semibold">{formatearARS(g.neta)}</p></div>
@@ -208,15 +215,14 @@ function Widget({ id, yo, gestion, periodo, datos, nombre, irA }: WProps) {
     const { dia, total } = diasDelMes();
     if (!datos.meta) {
       return (
-        <Tarjeta titulo="Meta del mes">
+        <Tarjeta titulo="Meta del mes" ir={() => irA(yo.role === "OWNER" ? "metas" : "panorama")}>
           <p className="texto-suave text-sm">{yo.role === "OWNER" ? "Todavía no definiste la meta de este mes." : "Todavía no hay una meta cargada para este mes."}</p>
-          {yo.role === "OWNER" && <button className="boton-chico self-start" onClick={() => irA("ajustes")}>Definir meta</button>}
         </Tarjeta>
       );
     }
     const p = progresoMeta(mesVendido, datos.meta, dia, total);
     return (
-      <Tarjeta titulo="Meta del mes">
+      <Tarjeta titulo="Meta del mes" ir={() => irA(yo.role === "OWNER" ? "metas" : "panorama")}>
         <p className="text-xl font-semibold">{formatearARS(mesVendido)} <span className="texto-suave text-sm font-normal">de {formatearARS(datos.meta)} · {p.pct}%</span></p>
         <Barra pct={p.pct} />
         <p className="texto-suave text-sm">
@@ -228,14 +234,13 @@ function Widget({ id, yo, gestion, periodo, datos, nombre, irA }: WProps) {
 
   if (id === "por_cobrar") {
     return (
-      <Tarjeta titulo="Turnos por cobrar">
-        {datos.porCerrar.length === 0 ? <p className="texto-suave text-sm">No hay turnos pendientes. 👌</p> : (
+      <Tarjeta titulo="Turnos por cobrar" ir={() => irA("agenda")}>
+        {datos.porCerrar.length === 0 ? <p className="texto-suave text-sm">No hay turnos pendientes.</p> : (
           <>
             <p className="text-xl font-semibold">{datos.porCerrar.length}</p>
             <ul className="flex flex-col gap-1 text-sm">
               {datos.porCerrar.slice(0, 3).map((t) => <li key={t.id}>{horaCorta(t.starts_at)} · {nombreCliente(t)} · {nombre(t.barber_membership_id)}</li>)}
             </ul>
-            <button className="boton-chico self-start" onClick={() => irA("agenda")}>Ir a cobrar</button>
           </>
         )}
       </Tarjeta>
@@ -244,7 +249,7 @@ function Widget({ id, yo, gestion, periodo, datos, nombre, irA }: WProps) {
 
   if (id === "turnos_hoy") {
     return (
-      <Tarjeta titulo="Turnos de hoy">
+      <Tarjeta titulo="Turnos de hoy" ir={() => irA("agenda")}>
         {datos.turnosHoy.length === 0 ? <p className="texto-suave text-sm">No hay turnos para hoy.</p> : (
           <ul className="flex flex-col gap-1 text-sm">
             {datos.turnosHoy.slice(0, 6).map((t) => (
@@ -255,7 +260,6 @@ function Widget({ id, yo, gestion, periodo, datos, nombre, irA }: WProps) {
             ))}
           </ul>
         )}
-        <button className="text-sm underline self-start" onClick={() => irA("agenda")}>Abrir agenda</button>
       </Tarjeta>
     );
   }
@@ -263,7 +267,7 @@ function Widget({ id, yo, gestion, periodo, datos, nombre, irA }: WProps) {
   if (id === "por_servicio") {
     const max = Math.max(1, ...datos.servicios.map((s) => s.vendido));
     return (
-      <Tarjeta titulo="Ventas por servicio">
+      <Tarjeta titulo="Ventas por servicio" ir={() => irA("reportes")}>
         {datos.servicios.length === 0 ? <p className="texto-suave text-sm">Sin ventas en el período.</p> : (
           <ul className="flex flex-col gap-2 text-sm">
             {datos.servicios.map((s) => (
@@ -281,7 +285,7 @@ function Widget({ id, yo, gestion, periodo, datos, nombre, irA }: WProps) {
   if (id === "medios_pago") {
     const filas = MEDIOS_PAGO.map((m) => ({ ...m, total: datos.actual.filter((f) => f.payment_method === m.valor).reduce((s, f) => s + f.vendido, 0) })).filter((m) => m.total > 0);
     return (
-      <Tarjeta titulo="Medios de pago">
+      <Tarjeta titulo="Medios de pago" ir={() => irA("panorama")}>
         {filas.length === 0 ? <p className="texto-suave text-sm">Sin ventas en el período.</p> : (
           <ul className="flex flex-col gap-1 text-sm">
             {filas.map((m) => <li key={m.valor} className="flex justify-between"><span>{m.etiqueta}</span><span>{formatearARS(m.total)} · {vendido ? Math.round((m.total / vendido) * 100) : 0}%</span></li>)}
@@ -294,31 +298,30 @@ function Widget({ id, yo, gestion, periodo, datos, nombre, irA }: WProps) {
   if (id === "comision") {
     const aPagar = datos.pendiente.reduce((t, f) => t + f.a_pagar, 0);
     return (
-      <Tarjeta titulo={gestion ? "Comisiones por pagar" : "Tu comisión por cobrar"}>
+      <Tarjeta titulo={gestion ? "Comisiones por pagar" : "Tu comisión por cobrar"} ir={() => irA(gestion ? "caja" : "panorama")}>
         <p className="text-3xl font-semibold">{formatearARS(aPagar)}</p>
         <p className="texto-suave text-sm">{aPagar === 0 ? "No hay comisiones pendientes de liquidar." : `${datos.pendiente.reduce((t, f) => t + f.cantidad, 0)} ventas sin liquidar${gestion ? "" : " (lo que todavía no te pagaron)"}.`}</p>
-        {gestion && aPagar > 0 && <button className="boton-chico self-start" onClick={() => irA("caja")}>Ir a liquidar</button>}
       </Tarjeta>
     );
   }
 
   if (id === "alertas") {
-    const lista: { texto: string; grave: boolean }[] = [];
+    const lista: { texto: string; grave: boolean; ir: Destino }[] = [];
     const etiquetaCat = (c: string) => CATEGORIAS_GASTO.find((x) => x.valor === c)?.etiqueta ?? c;
     for (const a of alertasDePresupuesto(datos.gastosMes, datos.presupuestos)) {
-      lista.push({ grave: a.nivel === "excedido", texto: `${a.nivel === "excedido" ? "Te pasaste del presupuesto" : "Cerca del límite"} en ${etiquetaCat(a.categoria)}: ${formatearARS(a.gastado)} de ${formatearARS(a.presupuesto)}.` });
+      lista.push({ ir: "gastos", grave: a.nivel === "excedido", texto: `${a.nivel === "excedido" ? "Te pasaste del presupuesto" : "Cerca del límite"} en ${etiquetaCat(a.categoria)}: ${formatearARS(a.gastado)} de ${formatearARS(a.presupuesto)}.` });
     }
-    if (datos.cajaAyerSinCerrar) lista.push({ grave: false, texto: "La caja de ayer no se cerró." });
+    if (datos.cajaAyerSinCerrar) lista.push({ ir: "caja", grave: false, texto: "La caja de ayer no se cerró." });
     if (datos.meta) {
       const { dia, total } = diasDelMes();
       const p = progresoMeta(suma(datos.mes, "vendido"), datos.meta, dia, total);
-      if (!p.alcanzada && dia >= 7 && p.proyeccion < datos.meta) lista.push({ grave: false, texto: `A este ritmo cerrarías el mes en ${formatearARS(p.proyeccion)}, por debajo de la meta.` });
+      if (!p.alcanzada && dia >= 7 && p.proyeccion < datos.meta) lista.push({ ir: "metas", grave: false, texto: `A este ritmo cerrarías el mes en ${formatearARS(p.proyeccion)}, por debajo de la meta.` });
     }
     return (
-      <Tarjeta titulo="Alertas">
-        {lista.length === 0 ? <p className="texto-suave text-sm">Todo en orden. 👌</p> : (
+      <Tarjeta titulo="Alertas" ir={() => irA(lista[0]?.ir ?? "caja")}>
+        {lista.length === 0 ? <p className="texto-suave text-sm">Todo en orden.</p> : (
           <ul className="flex flex-col gap-1 text-sm">
-            {lista.map((a) => <li key={a.texto} className={a.grave ? "text-red-600" : ""}>• {a.texto}</li>)}
+            {lista.map((a) => <li key={a.texto}><button className={`text-left ${a.grave ? "text-red-600" : ""}`} onClick={(ev) => { ev.stopPropagation(); irA(a.ir); }}>• {a.texto}</button></li>)}
           </ul>
         )}
       </Tarjeta>
@@ -330,7 +333,7 @@ function Widget({ id, yo, gestion, periodo, datos, nombre, irA }: WProps) {
     .map((mid) => ({ mid, total: datos.actual.filter((f) => f.barber_membership_id === mid).reduce((s, f) => s + f.vendido, 0), cant: datos.actual.filter((f) => f.barber_membership_id === mid).reduce((s, f) => s + f.cantidad, 0) }))
     .sort((a, b) => b.total - a.total);
   return (
-    <Tarjeta titulo="Por barbero">
+    <Tarjeta titulo="Por barbero" ir={() => irA("panorama")}>
       {filas.length === 0 ? <p className="texto-suave text-sm">Sin ventas en el período.</p> : (
         <ol className="flex flex-col gap-1 text-sm">
           {filas.map((f, i) => <li key={f.mid} className="flex justify-between"><span>{i + 1}. {nombre(f.mid)} ({f.cant})</span><span>{formatearARS(f.total)}</span></li>)}

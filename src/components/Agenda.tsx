@@ -1,29 +1,29 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getSupabase } from "@/lib/supabase";
-import { formatearARS } from "@/lib/dinero";
-import { explicarMontoInvalido, parsearMonto } from "@/lib/validacion";
 import { hoyAR } from "@/lib/periodos";
+import { type Cliente, type Membresia, type Servicio, type Turno } from "@/lib/tipos";
 import {
-  MEDIOS_PAGO, type Cliente, type MedioPago, type Membresia, type Servicio, type Turno,
-} from "@/lib/tipos";
-import {
-  ETIQUETA_ESTADO, esPorCerrar, fechaHoraAIso, fechaLarga, horaCorta, horasDelDia, nombreCliente, rangoDia, sumarDias,
+  ETIQUETA_ESTADO, esPorCerrar, fechaHoraAIso, fechaLarga, horaCorta, horasDelDia, nombreCliente, sumarDias,
 } from "@/lib/turnos";
+import { celdasDelMes, fechaAR, mesDe, nombreMes, numeroDelDia, rangoMes, sumarMeses } from "@/lib/calendario";
+import { Cargando, Icono, Segmentado } from "@/components/ui";
+import type { TurnoACobrar } from "@/components/VentaModal";
 
-interface Props { yo: Membresia; equipo: Membresia[]; hayClientes: boolean }
-interface Datos { dia: Turno[]; porCerrar: Turno[]; servicios: Servicio[]; clientes: Cliente[] }
+interface Props { yo: Membresia; equipo: Membresia[]; hayClientes: boolean; onCobrar: (t: TurnoACobrar) => void; refresco: number }
+interface Datos { mes: Turno[]; porCerrar: Turno[]; servicios: Servicio[]; clientes: Cliente[] }
+type Vista = "dia" | "calendario";
 
 const TURNO = "*, clients(name,phone)";
 
-async function cargar(yo: Membresia, fecha: string, hayClientes: boolean): Promise<Datos & { error: boolean }> {
+async function cargar(yo: Membresia, mes: string, hayClientes: boolean): Promise<Datos & { error: boolean }> {
   const sb = getSupabase();
-  const rango = rangoDia(fecha);
+  const rango = rangoMes(mes);
   const ahora = new Date().toISOString();
   const [d, c, s, cl] = await Promise.all([
     rango
-      ? sb.from("appointments").select(TURNO).eq("business_id", yo.business_id).gte("starts_at", rango.desde).lt("starts_at", rango.hasta).order("starts_at")
+      ? sb.from("appointments").select(TURNO).eq("business_id", yo.business_id).gte("starts_at", rango.desde).lt("starts_at", rango.hasta).order("starts_at").limit(1000)
       : Promise.resolve({ data: [], error: null }),
     sb.from("appointments").select(TURNO).eq("business_id", yo.business_id)
       .or(`status.eq.DONE,and(status.eq.SCHEDULED,ends_at.lte.${ahora})`).order("starts_at").limit(50),
@@ -34,60 +34,69 @@ async function cargar(yo: Membresia, fecha: string, hayClientes: boolean): Promi
   ]);
   return {
     error: Boolean(d.error || c.error || s.error || cl.error),
-    dia: (d.data as Turno[]) ?? [],
+    mes: (d.data as Turno[]) ?? [],
     porCerrar: ((c.data as Turno[]) ?? []).filter((t) => esPorCerrar(t)),
     servicios: (s.data as Servicio[]) ?? [],
     clientes: (cl.data as Cliente[]) ?? [],
   };
 }
 
-export default function Agenda({ yo, equipo, hayClientes }: Props) {
+export default function Agenda({ yo, equipo, hayClientes, onCobrar, refresco }: Props) {
+  const [vista, setVista] = useState<Vista>("dia");
   const [fecha, setFecha] = useState(hoyAR());
+  const [mesVista, setMesVista] = useState(mesDe(hoyAR()));
   const [datos, setDatos] = useState<Datos | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [nuevo, setNuevo] = useState(false);
   const [version, setVersion] = useState(0);
   const recargar = useCallback(() => setVersion((v) => v + 1), []);
+  const mes = vista === "calendario" ? mesVista : mesDe(fecha);
 
   useEffect(() => {
     let vivo = true;
-    void cargar(yo, fecha, hayClientes).then((r) => {
+    void cargar(yo, mes, hayClientes).then((r) => {
       if (!vivo) return;
       setError(r.error ? "No se pudo cargar la agenda." : null);
       setDatos(r);
     });
     return () => { vivo = false; };
-  }, [yo, fecha, hayClientes, version]);
+  }, [yo, mes, hayClientes, version, refresco]);
 
   const gestion = yo.role !== "BARBER";
   const nombre = (id: string) => equipo.find((m) => m.id === id)?.display_name ?? "—";
-  if (!datos) return <p className="texto-suave">Cargando…</p>;
+  const porDia = useMemo(() => {
+    const mapa = new Map<string, Turno[]>();
+    for (const t of datos?.mes ?? []) {
+      const k = fechaAR(t.starts_at);
+      mapa.set(k, [...(mapa.get(k) ?? []), t]);
+    }
+    return mapa;
+  }, [datos]);
 
-  const activos = datos.dia.filter((t) => t.status !== "CANCELED" && t.status !== "NO_SHOW");
-  const otros = datos.dia.filter((t) => t.status === "CANCELED" || t.status === "NO_SHOW");
+  if (!datos) return <Cargando />;
+
+  const delDia = porDia.get(fecha) ?? [];
+  const activos = delDia.filter((t) => t.status !== "CANCELED" && t.status !== "NO_SHOW");
+  const otros = delDia.filter((t) => t.status === "CANCELED" || t.status === "NO_SHOW");
+
+  function cobrar(t: Turno) {
+    const s = datos?.servicios.find((x) => x.id === t.service_id);
+    onCobrar({ id: t.id, cliente: nombreCliente(t), servicio: t.service_name ?? null, precio: s?.default_price ?? null, barbero: nombre(t.barber_membership_id) });
+  }
+  const tarjeta = (t: Turno, conFecha = false) => (
+    <TarjetaTurno key={t.id} t={t} gestion={gestion} nombre={nombre} onCobrar={() => cobrar(t)} onCambio={recargar} onError={setError} conFecha={conFecha} />
+  );
 
   return (
-    <section className="flex flex-col gap-5">
-      {datos.porCerrar.length > 0 && (
-        <div className="flex flex-col gap-3">
-          <h2 className="font-medium">Por cerrar ({datos.porCerrar.length})</h2>
-          <p className="texto-suave text-sm">Turnos terminados o con la hora vencida: cobralos o cancelalos.</p>
-          {datos.porCerrar.map((t) => (
-            <TarjetaTurno key={t.id} t={t} gestion={gestion} nombre={nombre} servicios={datos.servicios} onCambio={recargar} onError={setError} conFecha />
-          ))}
-        </div>
-      )}
-
-      <div className="flex items-center justify-between gap-2">
-        <button className="chip" aria-label="Día anterior" onClick={() => setFecha(sumarDias(fecha, -1))}>←</button>
-        <div className="text-center">
-          <p className="font-medium capitalize">{fechaLarga(fecha)}</p>
-          {fecha !== hoyAR() && <button className="text-xs underline" onClick={() => setFecha(hoyAR())}>Volver a hoy</button>}
-        </div>
-        <button className="chip" aria-label="Día siguiente" onClick={() => setFecha(sumarDias(fecha, 1))}>→</button>
+    <section className="flex flex-col gap-4">
+      <div className="flex items-center justify-between gap-3">
+        <Segmentado etiqueta="Vista de la agenda" valor={vista} onCambio={(v) => { setVista(v); if (v === "calendario") setMesVista(mesDe(fecha)); }}
+          opciones={[{ valor: "dia", texto: "Día" }, { valor: "calendario", texto: "Calendario" }]} />
+        <button className="boton-chico inline-flex items-center gap-1" style={{ minHeight: 46, borderRadius: 18 }} onClick={() => setNuevo((v) => !v)}>
+          <Icono nombre={nuevo ? "cerrar" : "mas"} tam={18} /> {nuevo ? "Cerrar" : "Turno"}
+        </button>
       </div>
 
-      <button className="boton" onClick={() => setNuevo((v) => !v)}>{nuevo ? "Cerrar" : "Nuevo turno"}</button>
       {nuevo && (
         <NuevoTurno yo={yo} equipo={equipo} fecha={fecha} servicios={datos.servicios} clientes={datos.clientes} hayClientes={hayClientes}
           onListo={() => { setNuevo(false); recargar(); }} />
@@ -95,10 +104,38 @@ export default function Agenda({ yo, equipo, hayClientes }: Props) {
 
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
 
+      {datos.porCerrar.length > 0 && (
+        <details className="tarjeta" open>
+          <summary className="cursor-pointer font-semibold">Por cerrar ({datos.porCerrar.length})</summary>
+          <p className="texto-suave mb-3 mt-1 text-sm">Turnos terminados o con la hora vencida: cobralos o cancelalos.</p>
+          <div className="flex flex-col gap-3">{datos.porCerrar.map((t) => tarjeta(t, true))}</div>
+        </details>
+      )}
+
+      {vista === "calendario" ? (
+        <Calendario mes={mesVista} fecha={fecha} porDia={porDia}
+          onMes={(n) => setMesVista(sumarMeses(mesVista, n))}
+          onDia={(d) => setFecha(d)} />
+      ) : (
+        <div className="flex items-center justify-between gap-2">
+          <button className="chip" style={{ width: 46, padding: 0 }} aria-label="Día anterior" onClick={() => setFecha(sumarDias(fecha, -1))}><Icono nombre="volver" tam={18} /></button>
+          <div className="text-center">
+            <p className="titulo text-lg font-semibold capitalize">{fechaLarga(fecha)}</p>
+            {fecha !== hoyAR() && <button className="text-xs font-semibold underline" onClick={() => setFecha(hoyAR())}>Volver a hoy</button>}
+          </div>
+          <button className="chip" style={{ width: 46, padding: 0 }} aria-label="Día siguiente" onClick={() => setFecha(sumarDias(fecha, 1))}><Icono nombre="siguiente" tam={18} /></button>
+        </div>
+      )}
+
+      {vista === "calendario" && (
+        <div className="flex items-center justify-between">
+          <p className="titulo text-lg font-semibold capitalize">{fechaLarga(fecha)}</p>
+          <button className="text-sm font-semibold underline" onClick={() => setVista("dia")}>Ver día completo</button>
+        </div>
+      )}
+
       {activos.length === 0 && <p className="texto-suave text-sm">No hay turnos este día.</p>}
-      {activos.map((t) => (
-        <TarjetaTurno key={t.id} t={t} gestion={gestion} nombre={nombre} servicios={datos.servicios} onCambio={recargar} onError={setError} />
-      ))}
+      {activos.map((t) => tarjeta(t))}
       {otros.length > 0 && (
         <details>
           <summary className="texto-suave cursor-pointer text-sm">Cancelados y no vinieron ({otros.length})</summary>
@@ -111,18 +148,46 @@ export default function Agenda({ yo, equipo, hayClientes }: Props) {
   );
 }
 
-function TarjetaTurno({ t, gestion, nombre, servicios, onCambio, onError, conFecha }: {
-  t: Turno; gestion: boolean; nombre: (id: string) => string; servicios: Servicio[]; onCambio: () => void; onError: (m: string | null) => void; conFecha?: boolean;
+function Calendario({ mes, fecha, porDia, onMes, onDia }: {
+  mes: string; fecha: string; porDia: Map<string, Turno[]>; onMes: (n: number) => void; onDia: (d: string) => void;
 }) {
-  const [cobrando, setCobrando] = useState(false);
-  const [monto, setMonto] = useState(() => {
-    const s = servicios.find((x) => x.id === t.service_id);
-    return s ? String(s.default_price) : "";
-  });
-  const [medio, setMedio] = useState<MedioPago>("EFECTIVO");
+  const hoy = hoyAR();
+  return (
+    <div className="tarjeta flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <button className="chip" style={{ width: 44, padding: 0 }} aria-label="Mes anterior" onClick={() => onMes(-1)}><Icono nombre="volver" tam={18} /></button>
+        <p className="titulo text-lg font-semibold capitalize">{nombreMes(mes)}</p>
+        <button className="chip" style={{ width: 44, padding: 0 }} aria-label="Mes siguiente" onClick={() => onMes(1)}><Icono nombre="siguiente" tam={18} /></button>
+      </div>
+      <div className="rejilla-semana" aria-hidden="true">
+        {["L", "M", "M", "J", "V", "S", "D"].map((d, i) => <span key={i} className="cabeza-dia">{d}</span>)}
+      </div>
+      <div className="rejilla-mes">
+        {celdasDelMes(mes).map((d, i) => {
+          if (!d) return <span key={`v${i}`} className="celda-dia" data-vacia="true" />;
+          const turnos = (porDia.get(d) ?? []).filter((t) => t.status !== "CANCELED" && t.status !== "NO_SHOW");
+          const pendientes = turnos.filter((t) => esPorCerrar(t)).length;
+          return (
+            <button key={d} className="celda-dia" data-hoy={d === hoy} aria-pressed={d === fecha}
+              aria-label={`${numeroDelDia(d)}: ${turnos.length === 0 ? "sin turnos" : `${turnos.length} ${turnos.length === 1 ? "turno" : "turnos"}`}`}
+              onClick={() => onDia(d)}>
+              <span>{numeroDelDia(d)}</span>
+              <span className="puntos">
+                {turnos.slice(0, 3).map((t, j) => <span key={j} className="punto" data-tipo={esPorCerrar(t) && pendientes > 0 ? "pendiente" : "normal"} />)}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <p className="texto-suave text-xs">Tocá un día para ver sus turnos. Los puntos rojos son turnos por cobrar o cerrar.</p>
+    </div>
+  );
+}
+
+function TarjetaTurno({ t, gestion, nombre, onCobrar, onCambio, onError, conFecha }: {
+  t: Turno; gestion: boolean; nombre: (id: string) => string; onCobrar: () => void; onCambio: () => void; onError: (m: string | null) => void; conFecha?: boolean;
+}) {
   const [enviando, setEnviando] = useState(false);
-  const clave = useRef<string>(crypto.randomUUID()); // misma clave hasta cobrar: un doble toque no duplica
-  const montoNum = parsearMonto(monto);
   const abierto = t.status === "SCHEDULED" || t.status === "DONE";
 
   async function llamar(fn: string, args: Record<string, unknown>) {
@@ -141,42 +206,23 @@ function TarjetaTurno({ t, gestion, nombre, servicios, onCambio, onError, conFec
   const fechaTxt = conFecha ? `${new Intl.DateTimeFormat("es-AR", { timeZone: "America/Argentina/Buenos_Aires", day: "2-digit", month: "2-digit" }).format(new Date(t.starts_at))} · ` : "";
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl border p-4" style={{ borderColor: "var(--linea)" }}>
+    <div className="tarjeta flex flex-col gap-3">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="font-medium">{fechaTxt}{horaCorta(t.starts_at)}–{horaCorta(t.ends_at)} · {nombreCliente(t)}</p>
+          <p className="monto text-xl">{fechaTxt}{horaCorta(t.starts_at)}<span className="texto-suave text-base font-normal"> – {horaCorta(t.ends_at)}</span></p>
+          <p className="font-semibold">{nombreCliente(t)}</p>
           <p className="texto-suave text-sm">{t.service_name ?? "Sin servicio"}{gestion ? ` · ${nombre(t.barber_membership_id)}` : ""}</p>
           {t.note && <p className="texto-suave text-sm">{t.note}</p>}
         </div>
         <span className="chip whitespace-nowrap text-xs" style={{ minHeight: 28 }}>{ETIQUETA_ESTADO[t.status]}</span>
       </div>
 
-      {abierto && !cobrando && (
+      {abierto && (
         <div className="flex flex-wrap gap-2">
+          <button className="boton-chico" disabled={enviando} onClick={onCobrar}>Cobrar</button>
           {t.status === "SCHEDULED" && <button className="chip" disabled={enviando} onClick={() => llamar("finish_appointment", { p_appointment: t.id })}>Terminar</button>}
-          <button className="boton-chico" disabled={enviando} onClick={() => setCobrando(true)}>Cobrar</button>
           <button className="chip" disabled={enviando} onClick={() => llamar("cancel_appointment", { p_appointment: t.id, p_reason: null, p_no_show: true })}>No vino</button>
           <button className="chip" disabled={enviando} onClick={cancelar}>Cancelar</button>
-        </div>
-      )}
-
-      {abierto && cobrando && (
-        <div className="flex flex-col gap-3">
-          <label className="flex flex-col gap-1 text-sm">
-            Monto cobrado
-            <input className="campo" inputMode="numeric" value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="$ 0" />
-            {explicarMontoInvalido(monto) && <span role="alert" className="text-red-600">{explicarMontoInvalido(monto)}</span>}
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {MEDIOS_PAGO.map((m) => <button key={m.valor} onClick={() => setMedio(m.valor)} className={`chip ${medio === m.valor ? "chip-activo" : ""}`}>{m.etiqueta}</button>)}
-          </div>
-          <div className="flex gap-2">
-            <button className="boton-chico" disabled={enviando || !montoNum}
-              onClick={() => llamar("charge_appointment", { p_appointment: t.id, p_amount: montoNum, p_payment: medio, p_idempotency_key: clave.current })}>
-              {enviando ? "Guardando…" : `Cobrar ${montoNum ? formatearARS(montoNum) : ""}`}
-            </button>
-            <button className="chip" onClick={() => setCobrando(false)}>Volver</button>
-          </div>
         </div>
       )}
     </div>
@@ -212,7 +258,7 @@ function NuevoTurno({ yo, equipo, fecha, servicios, clientes, hayClientes, onLis
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border p-4" style={{ borderColor: "var(--linea)" }}>
+    <div className="flex flex-col gap-3 tarjeta">
       {gestion && (
         <label className="flex flex-col gap-1 text-sm">Barbero
           <select className="campo" value={barbero} onChange={(e) => setBarbero(e.target.value)}>
