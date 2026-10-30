@@ -1,44 +1,67 @@
 import { describe, expect, it } from "vitest";
-import { layoutPorDefecto, moverWidget, sanearLayout, widgetsDisponibles, type IdWidget } from "./widgets";
+import { acomodar, layoutParaGuardar, sanearElegidos, tieneFormatoNuevo, widgetsFijos, widgetsOpcionales } from "./widgets";
 import { gananciaLocal, progresoMeta, textoVariacion, variacion } from "./calculos";
 import { esPorCerrar, fechaHoraAIso, horasDelDia, rangoDia, sumarDias, telefonoParaWhatsApp } from "./turnos";
 
-describe("widgets según rol y módulos", () => {
-  it("un barbero no ve el ranking por barbero", () => {
-    expect(widgetsDisponibles("BARBER", []).map((w) => w.id)).not.toContain("por_barbero");
-    expect(widgetsDisponibles("OWNER", []).map((w) => w.id)).toContain("por_barbero");
+describe("widgets según zona, rol y módulos", () => {
+  it("un barbero no ve el ranking por barbero ni las alertas", () => {
+    const ids = [...widgetsFijos("resumen", "BARBER", []), ...widgetsOpcionales("resumen", "BARBER", [])].map((w) => w.id);
+    expect(ids).not.toContain("por_barbero");
+    expect(ids).not.toContain("alertas");
+    expect(widgetsFijos("resumen", "OWNER", []).map((w) => w.id)).toContain("por_barbero");
   });
-  it("sin agenda no hay widgets de turnos", () => {
-    const ids = layoutPorDefecto("OWNER", ["CLIENTES"]);
-    expect(ids).not.toContain("turnos_hoy");
-    expect(ids).not.toContain("por_cobrar");
-    expect(layoutPorDefecto("OWNER", ["AGENDA"])).toContain("turnos_hoy");
+  it("sin agenda no hay widgets de turnos en el inicio", () => {
+    const sin = widgetsFijos("inicio", "OWNER", ["CLIENTES"]).map((w) => w.id);
+    expect(sin).not.toContain("turnos_hoy");
+    expect(sin).not.toContain("por_cobrar");
+    expect(widgetsFijos("inicio", "OWNER", ["AGENDA"]).map((w) => w.id)).toContain("turnos_hoy");
   });
-});
-
-describe("sanearLayout", () => {
-  it("descarta desconocidos, repetidos y no permitidos", () => {
-    const crudo = [{ id: "ventas" }, { id: "ventas" }, { id: "inventado" }, { id: "por_barbero" }, { id: "turnos_hoy" }];
-    expect(sanearLayout(crudo, "BARBER", [])).toEqual(["ventas"]);
-  });
-  it("si el formato es inválido vuelve al orden por defecto", () => {
-    expect(sanearLayout({ a: 1 }, "OWNER", [])).toEqual(layoutPorDefecto("OWNER", []));
-    expect(sanearLayout(null, "OWNER", [])).toEqual(layoutPorDefecto("OWNER", []));
-  });
-  it("respeta una lista vacía guardada a propósito", () => {
-    expect(sanearLayout([], "OWNER", [])).toEqual([]);
+  it("lo fijo y lo opcional nunca se pisan", () => {
+    for (const zona of ["inicio", "resumen"] as const) {
+      const f = widgetsFijos(zona, "OWNER", ["AGENDA"]).map((w) => w.id);
+      const o = widgetsOpcionales(zona, "OWNER", ["AGENDA"]).map((w) => w.id);
+      expect(f.filter((x) => o.includes(x))).toEqual([]);
+    }
   });
 });
 
-describe("moverWidget", () => {
-  const base: IdWidget[] = ["ventas", "ganancia", "metas"];
-  it("sube y baja", () => {
-    expect(moverWidget(base, "ganancia", -1)).toEqual(["ganancia", "ventas", "metas"]);
-    expect(moverWidget(base, "ganancia", 1)).toEqual(["ventas", "metas", "ganancia"]);
+describe("sanearElegidos", () => {
+  it("descarta desconocidos, repetidos, fijos y no permitidos", () => {
+    const crudo = [{ id: "inicio:medios_pago" }, { id: "inicio:medios_pago" }, { id: "inicio:inventado" }, { id: "inicio:por_barbero" }, { id: "inicio:ventas" }, { id: "resumen:ticket" }];
+    expect(sanearElegidos(crudo, "inicio", "BARBER", [])).toEqual(["medios_pago"]);
   });
-  it("no se sale de los límites", () => {
-    expect(moverWidget(base, "ventas", -1)).toEqual(base);
-    expect(moverWidget(base, "metas", 1)).toEqual(base);
+  it("el formato viejo (sin zona) se ignora y no rompe", () => {
+    expect(sanearElegidos([{ id: "ventas" }, { id: "metas" }], "inicio", "OWNER", [])).toEqual([]);
+    expect(tieneFormatoNuevo([{ id: "ventas" }])).toBe(false);
+    expect(tieneFormatoNuevo([{ id: "inicio:metas" }])).toBe(true);
+  });
+  it("si el formato es inválido usa lo de por defecto; una lista vacía se respeta", () => {
+    expect(sanearElegidos({ a: 1 }, "inicio", "OWNER", [])).toEqual(["metas"]);
+    expect(sanearElegidos([], "inicio", "OWNER", [])).toEqual([]);
+  });
+});
+
+describe("layoutParaGuardar", () => {
+  it("reemplaza solo la zona pedida y conserva la otra", () => {
+    const actual = [{ id: "inicio:metas" }, { id: "resumen:ticket" }];
+    expect(layoutParaGuardar(actual, "inicio", ["medios_pago"])).toEqual([{ id: "resumen:ticket" }, { id: "inicio:medios_pago" }]);
+    expect(layoutParaGuardar(null, "resumen", [])).toEqual([]);
+  });
+});
+
+describe("acomodar", () => {
+  it("un widget chico que quedaría solo se estira", () => {
+    expect(acomodar(["ventas", "ganancia"])).toEqual([{ id: "ventas", ancho: 2 }, { id: "ganancia", ancho: 2 }]);
+  });
+  it("dos chicos seguidos comparten la fila", () => {
+    expect(acomodar(["ganancia", "por_cobrar", "turnos_hoy"])).toEqual([
+      { id: "ganancia", ancho: 1 }, { id: "por_cobrar", ancho: 1 }, { id: "turnos_hoy", ancho: 2 },
+    ]);
+  });
+  it("chico seguido de grande se estira; ordena según el catálogo", () => {
+    expect(acomodar(["por_servicio", "metas", "ventas"])).toEqual([
+      { id: "ventas", ancho: 2 }, { id: "metas", ancho: 2 }, { id: "por_servicio", ancho: 2 },
+    ]);
   });
 });
 
@@ -100,8 +123,8 @@ describe("turnos", () => {
 
 describe("widgets de gestión", () => {
   it("las alertas son solo para dueño y encargado; la comisión es para todos", () => {
-    expect(widgetsDisponibles("BARBER", []).map((w) => w.id)).not.toContain("alertas");
-    expect(widgetsDisponibles("MANAGER", []).map((w) => w.id)).toContain("alertas");
-    expect(widgetsDisponibles("BARBER", []).map((w) => w.id)).toContain("comision");
+    expect(widgetsFijos("inicio", "BARBER", []).map((w) => w.id)).not.toContain("alertas");
+    expect(widgetsFijos("inicio", "MANAGER", []).map((w) => w.id)).toContain("alertas");
+    expect(widgetsOpcionales("inicio", "BARBER", []).map((w) => w.id)).toContain("comision");
   });
 });

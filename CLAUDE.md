@@ -27,11 +27,13 @@ Next.js + TypeScript (App Router), Tailwind, shadcn/ui, Supabase (Postgres, Auth
 - Navegación: 4 pestañas fijas abajo (Inicio, Agenda, Resumen, Ajustes). Agenda desaparece si el módulo está apagado (`src/lib/navegacion.ts`).
 - El botón flotante de Nueva venta existe SOLO en Inicio. Nueva venta es un modal por pasos (`VentaModal` + `src/lib/venta.ts`): cada elección desbloquea la siguiente.
 - Resumen reúne Panorama (bruto/neto/desglose), Ventas, Reportes, Caja y Gastos. Clientes, Servicios, Equipo, Comisiones, Horarios, Metas, Módulos, Apariencia e Historial viven en Ajustes.
-- Todo widget del inicio es clickeable y lleva a su detalle; cada persona puede ordenar u ocultar los suyos.
+- Inicio muestra solo lo del día a día (siempre HOY, sin selector de período). Resumen > Panorama es el tablero con selector de período. Ambos usan `Tablero.tsx` y `src/lib/widgets.ts`: widgets FIJOS (siempre visibles) y OPCIONALES (se suman desde "Más widgets", al final). Todo widget es clickeable y lleva a su detalle.
+- Formularios y altas van en modales (`Hoja`, `Campo`, `Fichas`, `PieHoja` de `components/ui.tsx`), nunca en línea debajo de una lista.
+- Agenda muestra también las ventas sueltas del día (las de turnos cobrados no se repiten) y permite editar turnos programados (migración 10, `update_appointment`).
 - Estilo: tokens CSS en `globals.css` (oscuro por defecto, claro opcional por dispositivo). El dueño elige un color de énfasis de una paleta cerrada (`src/lib/tema.ts`, guardado en `businesses.accent`, migración 9). No usar colores sueltos ni emojis en la interfaz; usar `var(--acento)` y los íconos de `components/ui.tsx`.
 - Tipografías propias (Instrument Sans y Bricolage Grotesque) autoalojadas con fontsource: no depender de Google Fonts.
 
 ## Etapa actual
-Etapa E (diseño y experiencia) implementada en código. Migración 9 (color de énfasis) pendiente de aplicar en Supabase: sin ella la app funciona con el color por defecto y avisa al dueño al intentar cambiarlo.
+Etapa E (diseño y experiencia) implementada en código. Migraciones 9 (color de énfasis) y 10 (editar turnos) pendientes de aplicar en Supabase; la 10 se probó en Postgres local con `supabase/tests/rls_editar_turnos_test.sql`. Sin la 9: sin ella la app funciona con el color por defecto y avisa al dueño al intentar cambiarlo.
 Verificado por Claude solo en local: lint, tipos, tests de lógica y build. NO verificado: ninguna pantalla nueva en navegador ni contra el Supabase real, ni la migración 9 en Postgres.
 Pendiente: sucursales y permisos configurables (plan Avanzado) y restricciones por plan (ver docs/planes.md).

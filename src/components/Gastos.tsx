@@ -7,6 +7,7 @@ import { rangoPeriodo, type Periodo } from "@/lib/periodos";
 import { explicarMontoInvalido, parsearMonto } from "@/lib/validacion";
 import { CATEGORIAS_GASTO, type CategoriaGasto, type FilaResumenGastos, type FilaResumenVentas, type Gasto, type Membresia, type Proveedor } from "@/lib/tipos";
 import GastosAvanzados from "@/components/GastosAvanzados";
+import { BotonAccion, Campo, EncabezadoHoja, Fichas, Hoja, PieHoja, Segmentado } from "@/components/ui";
 
 interface Props { yo: Membresia }
 
@@ -26,6 +27,7 @@ export default function Gastos({ yo }: Props) {
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [proveedor, setProveedor] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [cargarGasto, setCargarGasto] = useState(false);
   const clave = useRef<string>(crypto.randomUUID());
 
   const [version, setVersion] = useState(0);
@@ -90,6 +92,7 @@ export default function Gastos({ yo }: Props) {
     clave.current = crypto.randomUUID();
     setMonto("");
     setDetalle("");
+    setCargarGasto(false);
     recargar();
   }
 
@@ -102,32 +105,41 @@ export default function Gastos({ yo }: Props) {
 
   return (
     <section className="flex flex-col gap-5">
-      <div className="flex flex-col gap-2 tarjeta">
-        <h2 className="font-medium">Cargar un gasto</h2>
-        <select className="campo" value={categoria} onChange={(e) => setCategoria(e.target.value as CategoriaGasto)}>
-          {CATEGORIAS_GASTO.map((c) => <option key={c.valor} value={c.valor}>{c.etiqueta}</option>)}
-        </select>
-        <input className="campo" inputMode="numeric" placeholder="Monto en pesos" value={monto} onChange={(e) => setMonto(e.target.value)} />
-        {explicarMontoInvalido(monto) && <p role="alert" className="text-sm text-red-600">{explicarMontoInvalido(monto)}</p>}
-        {proveedores.length > 0 && (
-          <select className="campo" value={proveedor} onChange={(e) => setProveedor(e.target.value)} aria-label="Proveedor">
-            <option value="">Sin proveedor</option>
-            {proveedores.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
-        )}
-        <input className="campo" placeholder="Detalle (opcional)" maxLength={200} value={detalle} onChange={(e) => setDetalle(e.target.value)} />
-        <button className="boton" disabled={!montoNum || enviando} onClick={guardar}>
-          {enviando ? "Guardando…" : montoNum ? `Guardar ${formatearARS(montoNum)}` : "Guardar gasto"}
-        </button>
-      </div>
+      <BotonAccion texto="Cargar gasto" onClick={() => setCargarGasto(true)} />
 
-      <div className="flex gap-2">
-        {(["hoy", "semana", "mes"] as Periodo[]).map((p) => (
-          <button key={p} onClick={() => { setCargando(true); setPeriodo(p); }} className={`chip ${periodo === p ? "chip-activo" : ""}`}>
-            {p === "hoy" ? "Hoy" : p === "semana" ? "Últimos 7 días" : "Este mes"}
-          </button>
-        ))}
-      </div>
+      <Segmentado etiqueta="Período" valor={periodo} onCambio={(p) => { setCargando(true); setPeriodo(p); }}
+        opciones={[{ valor: "hoy", texto: "Hoy" }, { valor: "semana", texto: "7 días" }, { valor: "mes", texto: "Mes" }]} />
+
+      {cargarGasto && (
+        <Hoja titulo="Cargar un gasto" onCerrar={() => setCargarGasto(false)}>
+          <div className="formulario">
+            <EncabezadoHoja titulo="Cargar un gasto" onCerrar={() => setCargarGasto(false)} />
+            <div className="campo-grupo">
+              <span className="campo-etiqueta">Categoría</span>
+              <Fichas etiqueta="Categoría" valor={categoria} onCambio={setCategoria} opciones={CATEGORIAS_GASTO.map((c) => ({ valor: c.valor, texto: c.etiqueta }))} />
+            </div>
+            <Campo etiqueta="Monto en pesos">
+              <input className="campo" inputMode="numeric" placeholder="$ 0" value={monto} onChange={(e) => setMonto(e.target.value)} />
+            </Campo>
+            {explicarMontoInvalido(monto) && <p role="alert" className="text-sm text-red-600">{explicarMontoInvalido(monto)}</p>}
+            {proveedores.length > 0 && (
+              <Campo etiqueta="Proveedor">
+                <select className="campo" value={proveedor} onChange={(e) => setProveedor(e.target.value)}>
+                  <option value="">Sin proveedor</option>
+                  {proveedores.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </Campo>
+            )}
+            <Campo etiqueta="Detalle (opcional)"><input className="campo" maxLength={200} value={detalle} onChange={(e) => setDetalle(e.target.value)} /></Campo>
+            <PieHoja>
+              {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+              <button className="boton" disabled={!montoNum || enviando} onClick={guardar}>
+                {enviando ? "Guardando…" : montoNum ? `Guardar ${formatearARS(montoNum)}` : "Guardar gasto"}
+              </button>
+            </PieHoja>
+          </div>
+        </Hoja>
+      )}
 
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       {cargando ? <p className="texto-suave">Cargando…</p> : (

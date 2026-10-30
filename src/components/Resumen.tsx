@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { getSupabase } from "@/lib/supabase";
 import { formatearARS, formatearHora } from "@/lib/dinero";
 import { rangoPeriodo, type Periodo } from "@/lib/periodos";
-import type { FilaResumenVentas, Membresia, Venta } from "@/lib/tipos";
+import { MEDIOS_PAGO, type FilaResumenVentas, type Membresia, type Venta } from "@/lib/tipos";
+import { Segmentado } from "@/components/ui";
 
 const MAX_LISTA = 100;
 
@@ -53,56 +54,60 @@ export default function Resumen({ yo, equipo }: Props) {
     .filter((x) => x.cantidad > 0);
 
   return (
-    <section className="flex flex-col gap-5">
-      <div className="flex gap-2">
-        {(["hoy", "semana", "mes"] as Periodo[]).map((p) => (
-          <button key={p} onClick={() => { setCargando(true); setPeriodo(p); }}
-            className={`chip ${periodo === p ? "chip-activo" : ""}`}>
-            {p === "hoy" ? "Hoy" : p === "semana" ? "Últimos 7 días" : "Este mes"}
-          </button>
-        ))}
-      </div>
+    <section className="flex flex-col gap-4">
+      <Segmentado etiqueta="Período" valor={periodo} onCambio={(p) => { setCargando(true); setPeriodo(p); }}
+        opciones={[{ valor: "hoy", texto: "Hoy" }, { valor: "semana", texto: "7 días" }, { valor: "mes", texto: "Mes" }, { valor: "anio", texto: "Año" }]} />
 
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       {cargando ? <p className="texto-suave">Cargando…</p> : (
         <>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Dato titulo="Vendido" valor={formatearARS(total)} />
-            <Dato titulo={yo.role === "BARBER" ? "Tu ganancia" : "Para barberos"} valor={formatearARS(paraBarbero)} />
-            {yo.role !== "BARBER" && <Dato titulo="Para el local" valor={formatearARS(paraLocal)} />}
+          <div className="tarjeta-orbe flex flex-col gap-3">
+            <div>
+              <p className="texto-suave text-sm font-semibold">Vendido</p>
+              <p className="monto text-[40px] leading-none">{formatearARS(total)}</p>
+            </div>
+            <div className="flex gap-6">
+              <div><p className="texto-suave text-xs">{yo.role === "BARBER" ? "Tu ganancia" : "Para barberos"}</p><p className="monto text-xl">{formatearARS(paraBarbero)}</p></div>
+              {yo.role !== "BARBER" && <div><p className="texto-suave text-xs">Para el local</p><p className="monto text-xl">{formatearARS(paraLocal)}</p></div>}
+            </div>
           </div>
 
           {yo.role !== "BARBER" && porBarbero.length > 0 && (
-            <div>
-              <h2 className="mb-2 font-medium">Por barbero</h2>
-              <ul className="flex flex-col gap-2 text-sm">
+            <div className="flex flex-col gap-2">
+              <p className="titulo-tarjeta px-2">Por barbero</p>
+              <ul className="grupo-ajustes">
                 {porBarbero.map(({ m, cantidad, vendido, gana }) => (
-                  <li key={m.id} className="flex justify-between border-b pb-2">
-                    <span>{m.display_name} · {cantidad} {cantidad === 1 ? "venta" : "ventas"}</span>
-                    <span>{formatearARS(vendido)} (gana {formatearARS(gana)})</span>
+                  <li key={m.id} className="fila-ajuste" style={{ cursor: "default" }}>
+                    <span className="avatar" style={{ width: 38, height: 38, fontSize: 15 }}>{m.display_name.slice(0, 1).toUpperCase()}</span>
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate font-semibold">{m.display_name}</span>
+                      <span className="texto-suave text-xs">{cantidad} {cantidad === 1 ? "venta" : "ventas"} · gana {formatearARS(gana)}</span>
+                    </span>
+                    <span className="monto text-lg">{formatearARS(vendido)}</span>
                   </li>
                 ))}
               </ul>
             </div>
           )}
 
-          <div>
-            <h2 className="mb-2 font-medium">Ventas</h2>
+          <div className="flex flex-col gap-2">
+            <p className="titulo-tarjeta px-2">Ventas</p>
             {ventas.length >= MAX_LISTA && (
-              <p className="texto-suave mb-2 text-xs">Se muestran las últimas {MAX_LISTA} ventas. Los totales de arriba incluyen todas.</p>
+              <p className="texto-suave px-2 text-xs">Se muestran las últimas {MAX_LISTA} ventas. Los totales de arriba incluyen todas.</p>
             )}
-            {ventas.length === 0 ? <p className="texto-suave text-sm">No hay ventas en este período.</p> : (
-              <ul className="flex flex-col gap-2 text-sm">
+            {ventas.length === 0 ? <p className="texto-suave px-2 text-sm">No hay ventas en este período.</p> : (
+              <ul className="grupo-ajustes">
                 {ventas.map((v) => (
-                  <li key={v.id} className="flex items-start justify-between gap-3 border-b pb-2">
-                    <div className={v.status === "CANCELED" ? "line-through opacity-60" : ""}>
-                      <p>{formatearARS(v.amount)} · {v.service_name ?? "Sin servicio"}</p>
-                      <p className="texto-suave">{formatearHora(v.sold_at)} · {nombre(v.barber_membership_id)} · {v.payment_method}</p>
-                      {v.status === "CANCELED" && <p className="text-xs">Anulada: {v.cancel_reason}</p>}
-                    </div>
-                    {puedeAnular && v.status === "VALID" && (
-                      <button className="text-xs underline" onClick={() => anular(v.id)}>Anular</button>
-                    )}
+                  <li key={v.id} className="fila-ajuste" style={{ cursor: "default", alignItems: "flex-start" }}>
+                    <span className="flex min-w-0 flex-1 flex-col" style={v.status === "CANCELED" ? { textDecoration: "line-through", opacity: 0.55 } : undefined}>
+                      <span className="truncate font-semibold">{v.service_name ?? "Sin servicio"}</span>
+                      <span className="texto-suave text-xs">{formatearHora(v.sold_at)} · {nombre(v.barber_membership_id)} · {MEDIOS_PAGO.find((x) => x.valor === v.payment_method)?.etiqueta ?? v.payment_method}</span>
+                      {v.status === "CANCELED" && <span className="text-xs">Anulada: {v.cancel_reason}</span>}
+                    </span>
+                    <span className="flex flex-col items-end gap-1">
+                      <span className="monto text-lg">{formatearARS(v.amount)}</span>
+                      {puedeAnular && v.status === "VALID" && <button className="text-xs underline texto-suave" onClick={() => anular(v.id)}>Anular</button>}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -130,13 +135,4 @@ async function pedirDatos(periodo: Periodo, negocio: string): Promise<{ ventas: 
     filas: (resumen.data as FilaResumenVentas[]) ?? [],
     error: Boolean(lista.error || resumen.error),
   };
-}
-
-function Dato({ titulo, valor }: { titulo: string; valor: string }) {
-  return (
-    <div className="tarjeta">
-      <p className="texto-suave text-sm">{titulo}</p>
-      <p className="text-2xl font-semibold">{valor}</p>
-    </div>
-  );
 }

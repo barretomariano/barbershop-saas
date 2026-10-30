@@ -5,6 +5,7 @@ import { getSupabase } from "@/lib/supabase";
 import { formatearARS, formatearHora } from "@/lib/dinero";
 import type { Cliente, Membresia, Turno } from "@/lib/tipos";
 import { ETIQUETA_ESTADO, telefonoParaWhatsApp } from "@/lib/turnos";
+import { BotonAccion, Campo, EncabezadoHoja, Hoja, PieHoja } from "@/components/ui";
 
 const COLS = "id,business_id,name,phone,notes,active";
 const TELEFONO_OK = /^[0-9+() -]{6,20}$/;
@@ -14,7 +15,7 @@ export default function Clientes({ yo }: { yo: Membresia }) {
   const [lista, setLista] = useState<Cliente[] | null>(null);
   const [busqueda, setBusqueda] = useState("");
   const [verInactivos, setVerInactivos] = useState(false);
-  const [abierto, setAbierto] = useState<string | null>(null);
+  const [abierto, setAbierto] = useState<Cliente | null>(null);
   const [agregando, setAgregando] = useState(false);
   const [version, setVersion] = useState(0);
   const recargar = useCallback(() => setVersion((v) => v + 1), []);
@@ -33,21 +34,34 @@ export default function Clientes({ yo }: { yo: Membresia }) {
   return (
     <section className="flex flex-col gap-4">
       <input className="campo" placeholder="Buscar por nombre o teléfono" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
-      <button className="boton" onClick={() => setAgregando((v) => !v)}>{agregando ? "Cerrar" : "Nuevo cliente"}</button>
-      {agregando && <FormCliente negocio={yo.business_id} onListo={() => { setAgregando(false); recargar(); }} />}
+      <BotonAccion texto="Nuevo cliente" onClick={() => setAgregando(true)} />
 
       {visibles.length === 0 && <p className="texto-suave text-sm">{lista.length === 0 ? "Todavía no cargaste clientes." : "No hay clientes con esa búsqueda."}</p>}
-      <ul className="flex flex-col gap-2">
+      <ul className="grupo-ajustes">
         {visibles.map((c) => (
-          <li key={c.id} className="tarjeta">
-            <button className="flex w-full items-center justify-between text-left" onClick={() => setAbierto(abierto === c.id ? null : c.id)} aria-expanded={abierto === c.id}>
-              <span className="font-medium">{c.name}{!c.active && <span className="texto-suave text-xs"> · desactivado</span>}</span>
-              <span className="texto-suave text-sm">{c.phone ?? ""}</span>
+          <li key={c.id}>
+            <button className="fila-ajuste" onClick={() => setAbierto(c)}>
+              <span className="avatar" style={{ width: 38, height: 38, fontSize: 15 }}>{c.name.slice(0, 1).toUpperCase()}</span>
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="truncate font-semibold">{c.name}{!c.active && <span className="texto-suave text-xs"> · desactivado</span>}</span>
+                {c.phone && <span className="texto-suave text-sm">{c.phone}</span>}
+              </span>
             </button>
-            {abierto === c.id && <Ficha c={c} gestion={gestion} onCambio={recargar} />}
           </li>
         ))}
       </ul>
+      {agregando && (
+        <Hoja titulo="Nuevo cliente" onCerrar={() => setAgregando(false)}>
+          <EncabezadoHoja titulo="Nuevo cliente" onCerrar={() => setAgregando(false)} />
+          <FormCliente negocio={yo.business_id} onListo={() => { setAgregando(false); recargar(); }} />
+        </Hoja>
+      )}
+      {abierto && (
+        <Hoja titulo={abierto.name} onCerrar={() => setAbierto(null)} ancho>
+          <EncabezadoHoja titulo={abierto.name} detalle={abierto.active ? undefined : "Cliente desactivado"} onCerrar={() => setAbierto(null)} />
+          <Ficha c={abierto} gestion={gestion} onCambio={() => { setAbierto(null); recargar(); }} />
+        </Hoja>
+      )}
       {gestion && <button className="text-sm underline self-start" onClick={() => setVerInactivos((v) => !v)}>{verInactivos ? "Ocultar desactivados" : "Ver desactivados"}</button>}
     </section>
   );
@@ -70,12 +84,14 @@ function FormCliente({ negocio, onListo }: { negocio: string; onListo: () => voi
   }
 
   return (
-    <div className="flex flex-col gap-3 tarjeta">
-      <input className="campo" placeholder="Nombre" value={nombre} maxLength={80} onChange={(e) => setNombre(e.target.value)} />
-      <input className="campo" placeholder="Teléfono (opcional)" inputMode="tel" value={telefono} onChange={(e) => setTelefono(e.target.value)} />
-      <input className="campo" placeholder="Notas (opcional)" value={notas} maxLength={500} onChange={(e) => setNotas(e.target.value)} />
-      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-      <button className="boton" onClick={guardar} disabled={enviando}>{enviando ? "Guardando…" : "Guardar cliente"}</button>
+    <div className="formulario">
+      <Campo etiqueta="Nombre"><input className="campo" value={nombre} maxLength={80} onChange={(e) => setNombre(e.target.value)} /></Campo>
+      <Campo etiqueta="Teléfono (opcional)"><input className="campo" inputMode="tel" value={telefono} onChange={(e) => setTelefono(e.target.value)} /></Campo>
+      <Campo etiqueta="Notas (opcional)"><input className="campo" value={notas} maxLength={500} onChange={(e) => setNotas(e.target.value)} /></Campo>
+      <PieHoja>
+        {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+        <button className="boton" onClick={guardar} disabled={enviando}>{enviando ? "Guardando…" : "Guardar cliente"}</button>
+      </PieHoja>
     </div>
   );
 }
@@ -119,10 +135,10 @@ function Ficha({ c, gestion, onCambio }: { c: Cliente; gestion: boolean; onCambi
   const wa = c.phone ? telefonoParaWhatsApp(c.phone) : null;
 
   return (
-    <div className="mt-3 flex flex-col gap-3 border-t pt-3">
-      <input className="campo" aria-label="Nombre" value={nombre} maxLength={80} onChange={(e) => setNombre(e.target.value)} />
-      <input className="campo" aria-label="Teléfono" inputMode="tel" placeholder="Teléfono" value={telefono} onChange={(e) => setTelefono(e.target.value)} />
-      <input className="campo" aria-label="Notas" placeholder="Notas" value={notas} maxLength={500} onChange={(e) => setNotas(e.target.value)} />
+    <div className="formulario">
+      <Campo etiqueta="Nombre"><input className="campo" value={nombre} maxLength={80} onChange={(e) => setNombre(e.target.value)} /></Campo>
+      <Campo etiqueta="Teléfono"><input className="campo" inputMode="tel" value={telefono} onChange={(e) => setTelefono(e.target.value)} /></Campo>
+      <Campo etiqueta="Notas"><input className="campo" value={notas} maxLength={500} onChange={(e) => setNotas(e.target.value)} /></Campo>
       <div className="flex flex-wrap items-center gap-2">
         <button className="boton-chico" onClick={guardar}>Guardar</button>
         {wa && <a className="chip inline-flex items-center" href={`https://wa.me/${wa}`} target="_blank" rel="noopener noreferrer">WhatsApp</a>}

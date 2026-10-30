@@ -127,8 +127,8 @@ function Panel({ userId }: { userId: string }) {
         <header className="flex items-center justify-between gap-3">
           {activa === "inicio" ? (
             <div className="min-w-0">
-              <p className="texto-suave truncate text-sm font-semibold">{negocio.nombre || "Barbería"}</p>
-              <h1 className="titulo truncate text-[28px] font-semibold leading-tight">Hola, {nombrePila}</h1>
+              <h1 className="titulo truncate text-[38px] font-bold leading-[1.05]">{negocio.nombre || "Barbería"}</h1>
+              <p className="texto-suave mt-1 truncate text-[15px] font-medium">Hola, {nombrePila} · {rol}</p>
             </div>
           ) : (
             <h1 className="titulo text-[28px] font-semibold leading-tight">{TITULO_TAB[activa]}</h1>
@@ -144,7 +144,7 @@ function Panel({ userId }: { userId: string }) {
         {activa === "agenda" && hayAgenda && (
           <Agenda yo={yo} equipo={equipo} hayClientes={hayClientes} refresco={refresco} onCobrar={(t) => setVenta({ turno: t })} />
         )}
-        {activa === "resumen" && <ResumenHub key={refresco} yo={yo} equipo={equipo} hayClientes={hayClientes} sub={subResumen} onSub={setSubResumen} />}
+        {activa === "resumen" && <ResumenHub key={refresco} yo={yo} equipo={equipo} modulos={negocio.modulos} hayClientes={hayClientes} sub={subResumen} onSub={setSubResumen} irA={irA} />}
         {activa === "ajustes" && (
           <AjustesHub yo={yo} equipo={equipo} negocio={negocio} sub={subAjustes} onSub={setSubAjustes} onCambio={cargar}
             tema={tema} acento={acento} onTema={setTema} onAcento={setAcento} />

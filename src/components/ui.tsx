@@ -108,3 +108,61 @@ export function Volver({ texto, onClick }: { texto: string; onClick: () => void 
     </button>
   );
 }
+
+// Campo de formulario con su etiqueta arriba: siempre apilado, nunca se superpone con el de al lado.
+export function Campo({ etiqueta, ayuda, children }: { etiqueta: string; ayuda?: string; children: ReactNode }) {
+  return (
+    <label className="campo-grupo">
+      <span className="campo-etiqueta">{etiqueta}</span>
+      {children}
+      {ayuda && <span className="texto-suave text-xs">{ayuda}</span>}
+    </label>
+  );
+}
+
+// Elección de una opción entre pocas, en botones que se acomodan solos.
+export function Fichas<T extends string>({ opciones, valor, onCambio, etiqueta, columnas = 2 }: {
+  opciones: { valor: T; texto: string; detalle?: string }[]; valor: T | null; onCambio: (v: T) => void; etiqueta: string; columnas?: 1 | 2 | 3;
+}) {
+  return (
+    <div role="group" aria-label={etiqueta} className="fichas" data-cols={columnas}>
+      {opciones.map((o) => (
+        <button key={o.valor} type="button" className="opcion" aria-pressed={valor === o.valor} onClick={() => onCambio(o.valor)}>
+          <span className="font-semibold">{o.texto}</span>
+          {o.detalle && <span className="texto-suave text-xs">{o.detalle}</span>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Anillo de progreso (0 a 100).
+export function Anillo({ pct, tam = 84, children }: { pct: number; tam?: number; children?: ReactNode }) {
+  const r = 34;
+  const c = 2 * Math.PI * r;
+  const p = Math.min(100, Math.max(0, pct));
+  return (
+    <div style={{ position: "relative", width: tam, height: tam }} role="progressbar" aria-valuenow={p} aria-valuemin={0} aria-valuemax={100}>
+      <svg width={tam} height={tam} viewBox="0 0 80 80" style={{ transform: "rotate(-90deg)" }}>
+        <circle cx="40" cy="40" r={r} fill="none" stroke="var(--linea)" strokeWidth="8" />
+        <circle cx="40" cy="40" r={r} fill="none" stroke="var(--acento)" strokeWidth="8" strokeLinecap="round"
+          strokeDasharray={c} strokeDashoffset={c - (c * p) / 100} />
+      </svg>
+      <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}>{children}</div>
+    </div>
+  );
+}
+
+// Botón de acción principal de una pantalla (abre un modal).
+export function BotonAccion({ texto, onClick, chico }: { texto: string; onClick: () => void; chico?: boolean }) {
+  return (
+    <button className={chico ? "boton-chico inline-flex items-center gap-1" : "boton inline-flex items-center justify-center gap-2"} onClick={onClick}>
+      <Icono nombre="mas" tam={18} /> {texto}
+    </button>
+  );
+}
+
+// Pie de un modal: acciones alineadas y siempre visibles.
+export function PieHoja({ children }: { children: ReactNode }) {
+  return <div className="pie-hoja">{children}</div>;
+}

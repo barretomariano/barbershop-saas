@@ -6,6 +6,7 @@ import { formatearARS, formatearHora } from "@/lib/dinero";
 import { hoyAR } from "@/lib/periodos";
 import { parsearMonto } from "@/lib/validacion";
 import { rangoDia, sumarDias } from "@/lib/turnos";
+import { Campo, EncabezadoHoja, Hoja, PieHoja } from "@/components/ui";
 import { MEDIOS_PAGO, type CierreCaja, type FilaPendiente, type FilaResumenGastos, type FilaResumenVentas, type Liquidacion, type Membresia } from "@/lib/tipos";
 
 export default function Caja({ yo, equipo }: { yo: Membresia; equipo: Membresia[] }) {
@@ -28,6 +29,7 @@ function CierreDia({ yo, version, onCambio }: { yo: Membresia; version: number; 
   const [nota, setNota] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [cerrando, setCerrando] = useState(false);
 
   useEffect(() => {
     let vivo = true;
@@ -60,7 +62,7 @@ function CierreDia({ yo, version, onCambio }: { yo: Membresia; version: number; 
     setMsg(null);
     const { error } = await getSupabase().rpc("close_day", { p_business: yo.business_id, p_date: fecha, p_counted: contadoNum, p_note: nota || null });
     setEnviando(false);
-    if (error) setMsg(error.message); else { setContado(""); setNota(""); onCambio(); }
+    if (error) setMsg(error.message); else { setContado(""); setNota(""); setCerrando(false); onCambio(); }
   }
 
   return (
@@ -90,14 +92,22 @@ function CierreDia({ yo, version, onCambio }: { yo: Membresia; version: number; 
               .map((m) => <li key={m.valor}>{m.etiqueta}: {formatearARS(m.t)}</li>)}
           </ul>
           <p className="font-medium">Efectivo que debería haber: {formatearARS(efectivo)}</p>
-          <label className="flex flex-col gap-1 text-sm">Efectivo que contaste
-            <input className="campo" inputMode="numeric" placeholder="$ 0" value={contado} onChange={(e) => setContado(e.target.value)} />
-          </label>
-          {contadoNum !== null && <p className="texto-suave text-sm">Diferencia: {formatearARS(contadoNum - efectivo)}</p>}
-          <input className="campo" placeholder="Nota (opcional)" maxLength={300} value={nota} onChange={(e) => setNota(e.target.value)} />
-          {msg && <p role="alert" className="text-sm text-red-600">{msg}</p>}
-          <button className="boton" onClick={cerrar} disabled={enviando}>{enviando ? "Cerrando…" : "Cerrar caja del día"}</button>
+          <button className="boton" onClick={() => setCerrando(true)}>Cerrar caja del día</button>
           <p className="texto-suave text-xs">Un día cerrado no se puede modificar.</p>
+          {cerrando && (
+            <Hoja titulo="Cerrar caja" onCerrar={() => setCerrando(false)}>
+              <div className="formulario">
+                <EncabezadoHoja titulo="Cerrar caja" detalle={`Efectivo que debería haber: ${formatearARS(efectivo)}`} onCerrar={() => setCerrando(false)} />
+                <Campo etiqueta="Efectivo que contaste"><input className="campo" inputMode="numeric" placeholder="$ 0" value={contado} onChange={(e) => setContado(e.target.value)} /></Campo>
+                {contadoNum !== null && <p className="texto-suave text-sm">Diferencia: {formatearARS(contadoNum - efectivo)}</p>}
+                <Campo etiqueta="Nota (opcional)"><input className="campo" maxLength={300} value={nota} onChange={(e) => setNota(e.target.value)} /></Campo>
+                <PieHoja>
+                  {msg && <p role="alert" className="text-sm text-red-600">{msg}</p>}
+                  <button className="boton" onClick={cerrar} disabled={enviando}>{enviando ? "Cerrando…" : "Confirmar cierre"}</button>
+                </PieHoja>
+              </div>
+            </Hoja>
+          )}
         </div>
       )}
 

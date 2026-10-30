@@ -1,5 +1,6 @@
 "use client";
 
+import { BotonAccion, Campo, EncabezadoHoja, Fichas, Hoja, PieHoja } from "@/components/ui";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { getSupabase } from "@/lib/supabase";
 import { normalizarUsuario } from "@/lib/usuario";
@@ -44,6 +45,7 @@ export default function Equipo({ negocio, onCambio }: Props) {
   const [credencial, setCredencial] = useState<Credencial | null>(null);
   const [pendiente, setPendiente] = useState<{ id: string; accion: Accion } | null>(null);
   const [ocupado, setOcupado] = useState(false);
+  const [agregando, setAgregando] = useState(false);
 
   const [nombre, setNombre] = useState("");
   const [usuario, setUsuario] = useState("");
@@ -90,6 +92,7 @@ export default function Equipo({ negocio, onCambio }: Props) {
     if (!r.ok) { setError(r.mensaje); return; }
     setCredencial({ nombre: nombre.trim(), usuario: String(r.datos.usuario), clave: String(r.datos.clave), motivo: "alta" });
     setNombre(""); setUsuario(""); setClave("");
+    setAgregando(false);
     recargar(); onCambio();
   }
 
@@ -120,7 +123,9 @@ export default function Equipo({ negocio, onCambio }: Props) {
         </div>
       )}
 
-      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+      {error && !agregando && <p role="alert" className="text-sm text-red-600">{error}</p>}
+
+      <BotonAccion texto="Agregar persona" onClick={() => { setError(null); setAgregando(true); }} />
 
       {cargando ? <p className="texto-suave text-sm">Cargando…</p> : (
         <ul className="flex flex-col gap-2 text-sm">
@@ -151,30 +156,35 @@ export default function Equipo({ negocio, onCambio }: Props) {
         </ul>
       )}
 
-      <form onSubmit={agregar} className="flex flex-col gap-2 tarjeta">
-        <h3 className="font-medium">Agregar una persona</h3>
-        <input className="campo" placeholder="Nombre (ej. Juan Pérez)" maxLength={80} value={nombre} onChange={(e) => setNombre(e.target.value)} />
-        <input className="campo" placeholder="Usuario para ingresar (ej. juan.perez)" autoCapitalize="none" spellCheck={false} maxLength={30} value={usuario} onChange={(e) => setUsuario(e.target.value)} />
-        <select className="campo" value={rol} onChange={(e) => setRol(e.target.value as "BARBER" | "MANAGER")}>
-          <option value="BARBER">Barbero</option>
-          <option value="MANAGER">Encargado</option>
-        </select>
-        <input className="campo" placeholder="Clave (vacía = se genera sola)" autoCapitalize="none" spellCheck={false} maxLength={72} value={clave} onChange={(e) => setClave(e.target.value)} />
-        {rol === "BARBER" && (
-          <>
-            <select className="campo" value={modelo} onChange={(e) => setModelo(e.target.value as ModeloComision)}>
-              {MODELOS.map((x) => <option key={x.valor} value={x.valor}>{x.etiqueta}</option>)}
-            </select>
-            {modelo === "PERCENT" && (
-              <label className="flex items-center gap-2 text-sm">
-                Porcentaje para el barbero
-                <input className="campo w-24" inputMode="numeric" value={pct} onChange={(e) => setPct(e.target.value)} /> %
-              </label>
+      {agregando && (
+        <Hoja titulo="Agregar una persona" onCerrar={() => setAgregando(false)}>
+          <form onSubmit={agregar} className="formulario">
+            <EncabezadoHoja titulo="Agregar una persona" detalle="Va a ingresar con el usuario y la clave que definas acá." onCerrar={() => setAgregando(false)} />
+            <Campo etiqueta="Nombre"><input className="campo" placeholder="Ej. Juan Pérez" maxLength={80} value={nombre} onChange={(e) => setNombre(e.target.value)} /></Campo>
+            <Campo etiqueta="Usuario para ingresar"><input className="campo" placeholder="Ej. juan.perez" autoCapitalize="none" spellCheck={false} maxLength={30} value={usuario} onChange={(e) => setUsuario(e.target.value)} /></Campo>
+            <div className="campo-grupo">
+              <span className="campo-etiqueta">Rol</span>
+              <Fichas etiqueta="Rol" valor={rol} onCambio={setRol} opciones={[{ valor: "BARBER", texto: "Barbero" }, { valor: "MANAGER", texto: "Encargado" }]} />
+            </div>
+            <Campo etiqueta="Clave" ayuda="Si la dejás vacía, se genera una sola."><input className="campo" autoCapitalize="none" spellCheck={false} maxLength={72} value={clave} onChange={(e) => setClave(e.target.value)} /></Campo>
+            {rol === "BARBER" && (
+              <>
+                <div className="campo-grupo">
+                  <span className="campo-etiqueta">Cómo cobra</span>
+                  <Fichas etiqueta="Modelo de comisión" columnas={1} valor={modelo} onCambio={setModelo} opciones={MODELOS.map((x) => ({ valor: x.valor, texto: x.etiqueta }))} />
+                </div>
+                {modelo === "PERCENT" && (
+                  <Campo etiqueta="Porcentaje para el barbero (%)"><input className="campo" inputMode="numeric" value={pct} onChange={(e) => setPct(e.target.value)} /></Campo>
+                )}
+              </>
             )}
-          </>
-        )}
-        <button type="submit" className="boton" disabled={ocupado}>{ocupado ? "Guardando…" : "Agregar"}</button>
-      </form>
+            <PieHoja>
+              {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+              <button type="submit" className="boton" disabled={ocupado}>{ocupado ? "Guardando…" : "Agregar"}</button>
+            </PieHoja>
+          </form>
+        </Hoja>
+      )}
     </section>
   );
 }
