@@ -42,3 +42,9 @@ Pendiente: sucursales y permisos configurables (plan Avanzado) y restricciones p
 - Tema claro cálido por defecto (oscuro opcional por dispositivo). Superficies de "vidrio líquido" definidas al final de `globals.css` (tarjetas translúcidas, brillo en el borde, esferas de color, botones de tinta en píldora). `--acento-vivo` es decorativo; `--acento` se usa para texto.
 - Inicio incluye el widget "Tu impulso" (`src/lib/impulso.ts`): meta, ritmo diario, mejor día de los últimos 90.
 - Marca propia: Ajustes → Mi barbería (nombre, dirección, logo). Migración 11 + Worker `worker/index.js` + `src/lib/manifest.ts`. Migraciones pendientes de aplicar por Maro: 9, 10 y 11.
+
+## Modo demo (para diseñar sin base de datos, p. ej. en Modeinspect)
+- Si faltan `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY`, la app NO muestra el cartel de "sin configurar": se abre con una barbería inventada ("Black Label Barbershop"), usuario dueño ya logueado y datos de ejemplo (ventas de 120 días, turnos, gastos, caja, clientes, metas). Todo vive en memoria: al recargar vuelve al inicio.
+- Código: `src/lib/demo/datos.ts` (datos) y `src/lib/demo/cliente.ts` (imita lo que la app usa de Supabase: from/select/filtros, rpc, auth, storage). Se conecta en `src/lib/supabase.ts` (`modoDemo()`).
+- Solo se activa fuera de producción (`next dev`) o con `NEXT_PUBLIC_MODO_DEMO=1`. En producción real (variables cargadas, `.env.production`) nunca se activa. `.env.production` NO se lee en `next dev`; por eso Modeinspect no veía las variables.
+- Si se agrega una función `rpc` o una tabla nueva que las pantallas lean, hay que sumarla también al cliente demo (si no, la pantalla se ve vacía en la demo); `src/lib/demo/cliente.test.ts` cubre lo principal.
