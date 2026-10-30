@@ -42,8 +42,8 @@ interface Datos {
 }
 
 const suma = (f: FilaResumenVentas[], k: "vendido" | "para_barbero" | "para_local" | "cantidad") => f.reduce((s, x) => s + x[k], 0);
-const COMPARA: Record<Periodo, string> = { hoy: "que ayer", semana: "que los 7 días anteriores", mes: "que el mes anterior", anio: "que el año anterior" };
-const NOMBRE: Record<Periodo, string> = { hoy: "hoy", semana: "en los últimos 7 días", mes: "este mes", anio: "este año" };
+const COMPARA: Record<Periodo, string> = { hoy: "que ayer", semana: "que la semana pasada", mes: "que el mes anterior", anio: "que el año anterior" };
+const NOMBRE: Record<Periodo, string> = { hoy: "hoy", semana: "esta semana", mes: "este mes", anio: "este año" };
 const COLORES = ["var(--acento)", "var(--par)", "var(--ok)", "color-mix(in srgb, var(--acento) 45%, #fff)", "var(--suave)"];
 
 function textoComparacion(v: Variacion, p: Periodo): string {
@@ -145,13 +145,14 @@ export default function Tablero({ zona, periodo, yo, equipo, modulos, irA, refre
   );
 }
 
-function Tarjeta({ titulo, ir, ancho, tipo, children }: { titulo: string; ir: () => void; ancho: 1 | 2; tipo?: "orbe" | "solido" | "alerta"; children: React.ReactNode }) {
-  const base = tipo === "orbe" ? "tarjeta-orbe" : "tarjeta";
-  const extra = tipo === "solido" ? "w-solido" : tipo === "alerta" ? "w-alerta" : "";
+function Tarjeta({ titulo, ir, ancho, tipo, children }: { titulo: string; ir: () => void; ancho: 1 | 2; tipo?: "orbe"; children: React.ReactNode }) {
+  // Todas son el mismo vidrio esmerilado, sin color propio; solo la principal es más grande.
+  const base = tipo === "orbe" ? "tarjeta tarjeta-principal" : "tarjeta";
+  const extra = "";
   return (
     <div role="link" tabIndex={0} className={`${base} ${extra} tarjeta-click flex flex-col gap-2 w-${ancho}`}
       onClick={ir} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); ir(); } }}>
-      <h2 className="titulo-tarjeta" style={tipo === "orbe" ? { color: "rgba(244,242,238,0.72)" } : undefined}>
+      <h2 className="titulo-tarjeta">
         <span>{titulo}</span><Icono nombre="siguiente" tam={16} />
       </h2>
       {children}
@@ -201,23 +202,23 @@ function Widget({ id, ancho, zona, yo, gestion, periodo, datos, nombre, irA }: W
       ticket: cantMes > 0 ? Math.round(mesVendido / cantMes) : 0,
     });
     return (
-      <Tarjeta titulo="Tu impulso" ancho={ancho} tipo="solido" ir={() => irA("ventas")}>
+      <Tarjeta titulo="Tu impulso" ancho={ancho} ir={() => irA("ventas")}>
         <p className="titulo text-[26px] leading-tight">{imp.titulo}</p>
         <p className="texto-suave text-sm">{imp.detalle}</p>
         {imp.objetivoDia > 0 && (
           <div className="mt-1 flex flex-col gap-1">
-            <div className="h-2.5 w-full overflow-hidden rounded-full" style={{ background: "rgba(255,255,255,0.14)" }} role="progressbar" aria-valuenow={imp.pct} aria-valuemin={0} aria-valuemax={100}>
-              <div className="h-full rounded-full" style={{ width: `${imp.pct}%`, background: "linear-gradient(90deg, var(--acento-vivo), #ffc88a)", boxShadow: "0 0 14px var(--acento-vivo)" }} />
+            <div className="h-2.5 w-full overflow-hidden rounded-full" style={{ background: "var(--sup-3)" }} role="progressbar" aria-valuenow={imp.pct} aria-valuemin={0} aria-valuemax={100}>
+              <div className="h-full rounded-full" style={{ width: `${imp.pct}%`, background: "linear-gradient(90deg, var(--acento-vivo), color-mix(in srgb, var(--acento-vivo) 55%, #fff))", boxShadow: "0 0 14px var(--acento-vivo)" }} />
             </div>
-            <div className="flex justify-between text-xs" style={{ color: "rgba(247,242,236,0.62)" }}>
+            <div className="flex justify-between text-xs" style={{ color: "var(--suave)" }}>
               <span>{formatearARS(vendido)} hoy</span><span>{formatearARS(imp.objetivoDia)}</span>
             </div>
           </div>
         )}
         {(mejorDia > 0 || semPasada > 0) && (
-          <div className="mt-1 flex gap-5 text-xs" style={{ color: "rgba(247,242,236,0.62)" }}>
-            {mejorDia > 0 && <span>Mejor día <strong style={{ color: "#f7f2ec" }}>{formatearARS(mejorDia)}</strong></span>}
-            {semPasada > 0 && <span>Hace una semana <strong style={{ color: "#f7f2ec" }}>{formatearARS(semPasada)}</strong></span>}
+          <div className="mt-1 flex gap-5 text-xs" style={{ color: "var(--suave)" }}>
+            {mejorDia > 0 && <span>Mejor día <strong style={{ color: "var(--texto)" }}>{formatearARS(mejorDia)}</strong></span>}
+            {semPasada > 0 && <span>Hace una semana <strong style={{ color: "var(--texto)" }}>{formatearARS(semPasada)}</strong></span>}
           </div>
         )}
       </Tarjeta>
@@ -293,7 +294,7 @@ function Widget({ id, ancho, zona, yo, gestion, periodo, datos, nombre, irA }: W
   if (id === "por_cobrar") {
     const n = datos.porCerrar.length;
     return (
-      <Tarjeta titulo="Por cobrar" ancho={ancho} tipo={n > 0 ? "solido" : undefined} ir={() => irA("agenda")}>
+      <Tarjeta titulo="Por cobrar" ancho={ancho} ir={() => irA("agenda")}>
         <p className="monto text-5xl leading-none">{n}</p>
         <p className="texto-suave text-sm">{n === 0 ? "Todo cobrado" : n === 1 ? "turno por cobrar" : "turnos por cobrar"}</p>
       </Tarjeta>
@@ -419,7 +420,7 @@ function Widget({ id, ancho, zona, yo, gestion, periodo, datos, nombre, irA }: W
     // En el inicio solo molesta si hay algo que atender.
     if (lista.length === 0 && zona === "inicio") return null;
     return (
-      <Tarjeta titulo="Alertas" ancho={ancho} tipo={lista.length ? "alerta" : undefined} ir={() => irA(lista[0]?.ir ?? "caja")}>
+      <Tarjeta titulo="Alertas" ancho={ancho} ir={() => irA(lista[0]?.ir ?? "caja")}>
         {lista.length === 0 ? <p className="texto-suave text-sm">Todo en orden.</p> : (
           <ul className="flex flex-col gap-2 text-sm">
             {lista.map((a) => <li key={a.texto}><button className={`text-left ${a.grave ? "text-red-600" : ""}`} onClick={(ev) => { ev.stopPropagation(); irA(a.ir); }}>{a.texto}</button></li>)}

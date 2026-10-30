@@ -65,7 +65,7 @@ describe("rangoPeriodo (hora argentina)", () => {
   it("hoy empieza a las 00:00 de Argentina (03:00 UTC)", () => {
     expect(rangoPeriodo("hoy", ahora).desde).toBe("2026-10-25T03:00:00.000Z");
   });
-  it("semana incluye 7 días contando hoy", () => {
+  it("semana (domingo 25) arranca el lunes 19", () => {
     expect(rangoPeriodo("semana", ahora).desde).toBe("2026-10-19T03:00:00.000Z");
   });
   it("mes empieza el día 1 a las 00:00 de Argentina", () => {

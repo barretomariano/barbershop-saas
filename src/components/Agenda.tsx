@@ -120,7 +120,7 @@ export default function Agenda({ yo, equipo, hayClientes, onCobrar, refresco }: 
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
 
       {datos.porCerrar.length > 0 && (
-        <button className="tarjeta tarjeta-click flex items-center justify-between gap-3 w-solido" onClick={() => setModal({ modo: "cerrar" })}>
+        <button className="tarjeta tarjeta-click flex items-center justify-between gap-3" onClick={() => setModal({ modo: "cerrar" })}>
           <span>
             <span className="block font-bold">Por cerrar · {datos.porCerrar.length}</span>
             <span className="block text-sm" style={{ opacity: 0.75 }}>Turnos terminados o vencidos: cobralos o cancelalos</span>

@@ -108,7 +108,7 @@ export default function Gastos({ yo }: Props) {
       <BotonAccion texto="Cargar gasto" onClick={() => setCargarGasto(true)} />
 
       <Segmentado etiqueta="Período" valor={periodo} onCambio={(p) => { setCargando(true); setPeriodo(p); }}
-        opciones={[{ valor: "hoy", texto: "Hoy" }, { valor: "semana", texto: "7 días" }, { valor: "mes", texto: "Mes" }]} />
+        opciones={[{ valor: "hoy", texto: "Hoy" }, { valor: "semana", texto: "Esta semana" }, { valor: "mes", texto: "Mes" }]} />
 
       {cargarGasto && (
         <Hoja titulo="Cargar un gasto" onCerrar={() => setCargarGasto(false)}>

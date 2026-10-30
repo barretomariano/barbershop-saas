@@ -1,6 +1,8 @@
 "use client";
 
 import { urlLogo } from "@/lib/marca";
+import { INICIAL_CABECERA, siguienteCabecera } from "@/lib/cabecera";
+import { setMontosOcultos } from "@/lib/dinero";
 import { useCallback, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { getSupabase, supabaseConfigurado } from "@/lib/supabase";
@@ -19,6 +21,7 @@ import { mostrarBotonVenta, pestanasVisibles, ubicar, type Destino, type SubAjus
 import { ACENTO_POR_DEFECTO, aplicarApariencia, esAcento, leerAcentoLocal, leerTema, guardarLocal, CLAVE_ACENTO, type IdAcento, type Tema } from "@/lib/tema";
 
 const COLUMNAS = "id,business_id,user_id,role,display_name,active,commission_model,commission_bps,commission_configured,fixed_monthly";
+const CLAVE_MONTOS = "montos-ocultos";
 const ICONO_TAB: Record<Tab, NombreIcono> = { inicio: "inicio", agenda: "agenda", resumen: "resumen", ajustes: "ajustes" };
 const TITULO_TAB: Record<Exclude<Tab, "inicio">, string> = { agenda: "Agenda", resumen: "Resumen", ajustes: "Ajustes" };
 
@@ -59,6 +62,40 @@ function Panel({ userId }: { userId: string }) {
   // Panel solo se dibuja después de iniciar sesión (en el navegador), así que se puede leer el dispositivo directo.
   const [tema, setTema] = useState<Tema>(() => (typeof window === "undefined" ? "oscuro" : leerTema()));
   const [acento, setAcento] = useState<IdAcento>(() => (typeof window === "undefined" ? ACENTO_POR_DEFECTO : leerAcentoLocal()));
+
+  // Privacidad: tapar los montos (se recuerda en este dispositivo). El interruptor vive en la cabecera.
+  const [ocultos, setOcultos] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    let v = false;
+    try { v = window.localStorage.getItem(CLAVE_MONTOS) === "1"; } catch { /* sin almacenamiento: se muestran */ }
+    setMontosOcultos(v);
+    return v;
+  });
+  function alternarMontos() {
+    const v = !ocultos;
+    setMontosOcultos(v); // antes de redibujar, para que todo el árbol ya salga tapado (o visible)
+    try { window.localStorage.setItem(CLAVE_MONTOS, v ? "1" : "0"); } catch { /* idem */ }
+    setOcultos(v);
+  }
+
+  // Cabecera fija: se esconde al bajar (con demora) y vuelve al subir.
+  const [cabOculta, setCabOculta] = useState(false);
+  useEffect(() => {
+    let estado = INICIAL_CABECERA;
+    let pendiente = false;
+    const alScroll = () => {
+      if (pendiente) return;
+      pendiente = true;
+      requestAnimationFrame(() => {
+        pendiente = false;
+        const sig = siguienteCabecera(estado, window.scrollY);
+        estado = sig;
+        setCabOculta((prev) => (prev === sig.oculta ? prev : sig.oculta));
+      });
+    };
+    window.addEventListener("scroll", alScroll, { passive: true });
+    return () => window.removeEventListener("scroll", alScroll);
+  }, []);
 
   const [version, setVersion] = useState(0);
   const cargar = useCallback(() => setVersion((v) => v + 1), []);
@@ -107,6 +144,7 @@ function Panel({ userId }: { userId: string }) {
     if (u.tab === "resumen") setSubResumen((u.sub as SubResumen | null) ?? "panorama");
     if (u.tab === "ajustes") setSubAjustes((u.sub as SubAjustes | null) ?? null);
     window.scrollTo({ top: 0 });
+    setCabOculta(false);
   }
   function irATab(t: Tab) {
     if (t === activa) {
@@ -116,7 +154,10 @@ function Panel({ userId }: { userId: string }) {
     }
     setTab(t);
     if (t === "ajustes") setSubAjustes(null);
+    // Resumen siempre se abre en Panorama (y Panorama en "Hoy").
+    if (t === "resumen") setSubResumen("panorama");
     window.scrollTo({ top: 0 });
+    setCabOculta(false);
   }
 
   const nombrePila = yo.display_name.split(" ")[0];
@@ -125,7 +166,7 @@ function Panel({ userId }: { userId: string }) {
   return (
     <>
       <main className="pantalla flex flex-col gap-5">
-        <header className="flex items-center justify-between gap-3">
+        <header className="cabecera" data-oculta={cabOculta ? "true" : undefined}>
           {activa === "inicio" ? (
             <div className="flex min-w-0 items-center gap-3">
               {negocio.logoVersion > 0 && (
@@ -142,10 +183,11 @@ function Panel({ userId }: { userId: string }) {
           ) : (
             <h1 className="titulo text-[28px] font-semibold leading-tight">{TITULO_TAB[activa]}</h1>
           )}
-          <button className="avatar flex-none" aria-label={`${yo.display_name}, ${rol}. Ir a ajustes`} onClick={() => irA("ajustes")}>
-            {nombrePila.slice(0, 1).toUpperCase()}
+          <button className="boton-cab flex-none" aria-pressed={ocultos} aria-label={ocultos ? "Mostrar montos" : "Ocultar montos"} title={ocultos ? "Mostrar montos" : "Ocultar montos"} onClick={alternarMontos}>
+            <Icono nombre={ocultos ? "ojoTachado" : "ojo"} tam={22} />
           </button>
         </header>
+        <div className="barra-estado" aria-hidden="true" />
 
         {hayAgenda && activa !== "agenda" && <AvisoCierre negocio={yo.business_id} onVer={() => irA("agenda")} />}
 

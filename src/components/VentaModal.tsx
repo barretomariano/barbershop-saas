@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getSupabase } from "@/lib/supabase";
-import { formatearARS } from "@/lib/dinero";
+import { formatearARSReal } from "@/lib/dinero";
 import { explicarMontoInvalido, parsearMonto } from "@/lib/validacion";
 import { MEDIOS_PAGO, type Cliente, type MedioPago, type Membresia, type Servicio } from "@/lib/tipos";
 import {
@@ -77,7 +77,7 @@ export default function VentaModal({ yo, equipo, hayClientes, turno = null, onCe
     if (p === "servicio") {
       if (!pasoCompleto(p, e) || montoNum === null) return "Elegí qué se hizo";
       const s = servicios.find((x) => x.id === e.servicioId);
-      return `${s?.name ?? "Otro monto"} · ${formatearARS(montoNum)}`;
+      return `${s?.name ?? "Otro monto"} · ${formatearARSReal(montoNum)}`;
     }
     if (p === "pago") return e.medio ? etiquetaMedio(e.medio) : "Cómo pagó";
     if (p === "cliente") return e.clienteElegido ? (clientes.find((c) => c.id === e.clienteId)?.name ?? "Sin cliente") : "Quién fue atendido";
@@ -127,10 +127,10 @@ export default function VentaModal({ yo, equipo, hayClientes, turno = null, onCe
             <Icono nombre="check" tam={34} />
           </span>
           <p className="texto-suave text-sm">Venta registrada</p>
-          <p className="monto text-5xl">{formatearARS(resultado.amount)}</p>
+          <p className="monto text-5xl">{formatearARSReal(resultado.amount)}</p>
           {resultado.barber_amount !== null && resultado.local_amount !== null && (
             <p className="texto-suave text-sm">
-              {gestion ? `Barbero ${formatearARS(resultado.barber_amount)} · Local ${formatearARS(resultado.local_amount)}` : `Te corresponden ${formatearARS(resultado.barber_amount)}`}
+              {gestion ? `Barbero ${formatearARSReal(resultado.barber_amount)} · Local ${formatearARSReal(resultado.local_amount)}` : `Te corresponden ${formatearARSReal(resultado.barber_amount)}`}
             </p>
           )}
         </div>
@@ -216,7 +216,7 @@ export default function VentaModal({ yo, equipo, hayClientes, turno = null, onCe
                 <input className="campo mt-1 text-xl" style={{ width: 170 }} inputMode="numeric" autoFocus value={e.monto}
                   onChange={(ev) => setE({ ...e, monto: ev.target.value })} onBlur={() => { if (montoNum) setEditandoMonto(false); }} aria-label="Monto cobrado" />
               ) : (
-                <p className="monto text-4xl">{formatearARS(montoNum)}</p>
+                <p className="monto text-4xl">{formatearARSReal(montoNum)}</p>
               )}
             </div>
             <button className="boton-fantasma inline-flex items-center gap-2" onClick={() => setEditandoMonto((v) => !v)}>
@@ -245,7 +245,7 @@ function PanelServicio({ servicios, e, montoInvalido, montoOk, onServicio, onOtr
           {servicios.map((s) => (
             <button key={s.id} className="opcion" aria-pressed={e.servicioId === s.id} onClick={() => onServicio(s)}>
               <span className="font-semibold">{s.name}</span>
-              <span className="texto-suave text-sm">{formatearARS(s.default_price)}</span>
+              <span className="texto-suave text-sm">{formatearARSReal(s.default_price)}</span>
             </button>
           ))}
           <button className="opcion" aria-pressed={e.otroMonto} onClick={onOtro}>

@@ -2,7 +2,7 @@ export type Periodo = "hoy" | "semana" | "mes" | "anio";
 
 export const PERIODOS: { valor: Periodo; etiqueta: string }[] = [
   { valor: "hoy", etiqueta: "Hoy" },
-  { valor: "semana", etiqueta: "Últimos 7 días" },
+  { valor: "semana", etiqueta: "Esta semana" },
   { valor: "mes", etiqueta: "Este mes" },
   { valor: "anio", etiqueta: "Este año" },
 ];
@@ -17,12 +17,19 @@ function inicioDia(ahora: Date): number {
   return diaLocal - OFFSET_AR;
 }
 
+// Días que pasaron desde el lunes de la semana de "ahora" (lunes = 0 ... domingo = 6), en hora argentina.
+export function diasDesdeLunes(ahora: Date = new Date()): number {
+  const dia = new Date(ahora.getTime() + OFFSET_AR).getUTCDay(); // 0 = domingo
+  return (dia + 6) % 7;
+}
+
 export interface Rango { desde: string; hasta: string }
 
 export function rangoPeriodo(periodo: Periodo, ahora: Date = new Date()): Rango {
   const hoy0 = inicioDia(ahora);
   let desde = hoy0;
-  if (periodo === "semana") desde = hoy0 - 6 * 86_400_000;
+  // "Esta semana" va de lunes a domingo: se cuenta desde el lunes (00:00 hora argentina) hasta ahora.
+  if (periodo === "semana") desde = hoy0 - diasDesdeLunes(ahora) * 86_400_000;
   if (periodo === "mes" || periodo === "anio") {
     const l = new Date(ahora.getTime() + OFFSET_AR);
     desde = Date.UTC(l.getUTCFullYear(), periodo === "mes" ? l.getUTCMonth() : 0, 1) - OFFSET_AR;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { diasDelMes, hoyAR, mesActual, rangoAnterior, rangoPeriodo } from "./periodos";
+import { diasDelMes, diasDesdeLunes, hoyAR, mesActual, rangoAnterior, rangoPeriodo } from "./periodos";
 
 // 15/10/2026 14:30 hora argentina = 17:30 UTC
 const AHORA = new Date("2026-10-15T17:30:00Z");
@@ -14,8 +14,20 @@ describe("rangoPeriodo", () => {
   it("este año empieza el 1 de enero", () => {
     expect(rangoPeriodo("anio", AHORA).desde).toBe("2026-01-01T03:00:00.000Z");
   });
-  it("semana cubre 7 días contando hoy", () => {
-    expect(rangoPeriodo("semana", AHORA).desde).toBe("2026-10-09T03:00:00.000Z");
+  it("esta semana empieza el lunes (jueves 15 -> lunes 12)", () => {
+    expect(rangoPeriodo("semana", AHORA).desde).toBe("2026-10-12T03:00:00.000Z");
+  });
+  it("un lunes la semana empieza hoy mismo", () => {
+    expect(rangoPeriodo("semana", new Date("2026-10-12T15:00:00Z")).desde).toBe("2026-10-12T03:00:00.000Z");
+  });
+  it("un domingo la semana incluye los seis días anteriores", () => {
+    expect(rangoPeriodo("semana", new Date("2026-10-18T15:00:00Z")).desde).toBe("2026-10-12T03:00:00.000Z");
+  });
+  it("el lunes de madrugada (UTC) todavía es domingo en Argentina", () => {
+    // 2026-10-19 01:00 UTC = domingo 18/10 22:00 en Argentina
+    const r = rangoPeriodo("semana", new Date("2026-10-19T01:00:00Z"));
+    expect(r.desde).toBe("2026-10-12T03:00:00.000Z");
+    expect(diasDesdeLunes(new Date("2026-10-19T01:00:00Z"))).toBe(6);
   });
 });
 
@@ -25,8 +37,10 @@ describe("rangoAnterior", () => {
     expect(r.desde).toBe("2026-10-14T03:00:00.000Z");
     expect(r.hasta).toBe("2026-10-14T17:31:00.000Z");
   });
-  it("semana se compara con los 7 días anteriores", () => {
-    expect(rangoAnterior("semana", AHORA).desde).toBe("2026-10-02T03:00:00.000Z");
+  it("semana se compara con la semana pasada hasta el mismo día y hora", () => {
+    const r = rangoAnterior("semana", AHORA);
+    expect(r.desde).toBe("2026-10-05T03:00:00.000Z");
+    expect(r.hasta).toBe("2026-10-08T17:31:00.000Z");
   });
   it("mes se compara con el mismo tramo del mes anterior", () => {
     const r = rangoAnterior("mes", AHORA);

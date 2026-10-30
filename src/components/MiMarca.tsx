@@ -36,8 +36,13 @@ export default function MiMarca({ yo, nombre, slug, logoVersion, onCambio }: Pro
       const { p192, p512 } = await prepararLogo(f);
       const sb = getSupabase();
       for (const [tam, blob] of [[512, p512], [192, p192]] as const) {
-        const { error } = await sb.storage.from("logos").upload(`${yo.business_id}/logo-${tam}.png`, blob, { upsert: true, contentType: "image/png", cacheControl: "3600" });
-        if (error) throw new Error("No se pudo subir el logo. ¿Ya aplicaste la migración 11 en Supabase?");
+        const ruta = `${yo.business_id}/logo-${tam}.png`;
+        const opciones = { contentType: "image/png", cacheControl: "3600" };
+        // Primero reemplazando el logo anterior (upsert). Si Storage lo rechaza, se prueba como logo nuevo:
+        // la primera subida no necesita permiso de lectura y funciona aun sin la migración 12.
+        let { error } = await sb.storage.from("logos").upload(ruta, blob, { ...opciones, upsert: true });
+        if (error) ({ error } = await sb.storage.from("logos").upload(ruta, blob, { ...opciones, upsert: false }));
+        if (error) throw new Error(`No se pudo subir el logo: ${error.message}. Si dice "row-level security", aplicá la migración 12 en Supabase.`);
       }
       const { error } = await sb.rpc("set_logo", { p_business: yo.business_id, p_has: true });
       if (error) throw new Error(error.message);
@@ -54,6 +59,7 @@ export default function MiMarca({ yo, nombre, slug, logoVersion, onCambio }: Pro
   async function quitarLogo() {
     setOcupado(true); setMsg(null);
     const sb = getSupabase();
+    // Si Storage no deja borrar los archivos, igual se quita el logo de la barbería (queda sin mostrarse).
     await sb.storage.from("logos").remove([`${yo.business_id}/logo-512.png`, `${yo.business_id}/logo-192.png`]);
     const { error } = await sb.rpc("set_logo", { p_business: yo.business_id, p_has: false });
     setOcupado(false);

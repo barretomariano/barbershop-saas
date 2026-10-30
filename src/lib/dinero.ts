@@ -1,6 +1,21 @@
 // Montos en pesos argentinos (ARS), siempre en enteros. Nunca decimales.
 
+// Privacidad: cuando está activa, los montos se muestran tapados (la app lo enciende desde el botón de la cabecera).
+let montosOcultos = false;
+export const MONTO_TAPADO = "$ ••••";
+export function setMontosOcultos(v: boolean): void { montosOcultos = v; }
+export function getMontosOcultos(): boolean { return montosOcultos; }
+
 export function formatearARS(monto: number): string {
+  if (!Number.isInteger(monto)) {
+    throw new Error("El monto debe ser un número entero de pesos.");
+  }
+  if (montosOcultos) return MONTO_TAPADO;
+  return formatearARSReal(monto);
+}
+
+// Siempre el monto verdadero: para formularios donde la persona necesita ver lo que está cargando.
+export function formatearARSReal(monto: number): string {
   if (!Number.isInteger(monto)) {
     throw new Error("El monto debe ser un número entero de pesos.");
   }

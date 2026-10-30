@@ -53,17 +53,22 @@
 html { background: var(--fondo); -webkit-tap-highlight-color: transparent; }
 
 body {
-  background:
-    radial-gradient(70% 38% at 100% 0%, color-mix(in srgb, var(--acento-vivo) 26%, transparent), transparent 70%),
-    radial-gradient(60% 30% at 0% 22%, rgba(255, 255, 255, 0.55), transparent 70%),
-    radial-gradient(80% 40% at 50% 105%, color-mix(in srgb, var(--acento-vivo) 16%, transparent), transparent 70%),
-    var(--fondo);
-  background-attachment: fixed;
   color: var(--texto);
   font-family: var(--fuente);
   font-feature-settings: "tnum" 1, "ss01" 1;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+/* Fondo ambiental en una capa fija: las tarjetas de vidrio lo atraviesan y toman su color al desplazarse. */
+body::before {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(70% 38% at 100% 0%, color-mix(in srgb, var(--acento-vivo) 30%, transparent), transparent 70%),
+    radial-gradient(60% 30% at 0% 22%, rgba(255, 255, 255, 0.55), transparent 70%),
+    radial-gradient(55% 28% at 100% 58%, color-mix(in srgb, var(--par) 14%, transparent), transparent 72%),
+    radial-gradient(80% 40% at 50% 105%, color-mix(in srgb, var(--acento-vivo) 20%, transparent), transparent 70%),
+    var(--fondo);
 }
 
 .texto-suave { color: var(--suave); }
@@ -152,30 +157,6 @@ body {
 }
 .tarjeta-click { cursor: pointer; text-align: left; width: 100%; transition: transform 0.12s, background 0.15s; }
 .tarjeta-click:active { transform: scale(0.985); background: var(--sup-2); }
-
-.tarjeta-orbe {
-  position: relative; overflow: hidden; isolation: isolate;
-  padding: 22px;
-  border-radius: 32px;
-  background: #121214;
-  border: 1px solid var(--linea);
-  color: #f4f2ee;
-}
-:root[data-tema="claro"] .tarjeta-orbe { background: #17120e; }
-.tarjeta-orbe::before {
-  content: ""; position: absolute; z-index: -2;
-  width: 260px; height: 230px; right: -70px; top: -90px;
-  border-radius: 50%;
-  background: radial-gradient(60% 60% at 40% 65%, var(--acento) 0%, color-mix(in srgb, var(--acento) 55%, transparent) 40%, transparent 72%),
-              radial-gradient(70% 70% at 78% 28%, var(--par) 0%, transparent 70%);
-  filter: blur(26px);
-  opacity: 0.95;
-}
-.tarjeta-orbe::after {
-  content: ""; position: absolute; inset: 0; z-index: -1; opacity: 0.22; mix-blend-mode: overlay; pointer-events: none;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-}
-.tarjeta-orbe .texto-suave { color: rgba(244, 242, 238, 0.72); }
 
 .titulo-tarjeta { font-size: 13px; font-weight: 600; letter-spacing: 0.02em; color: var(--suave); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 
@@ -368,12 +349,6 @@ select.campo {
 .tablero { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .w-1 { grid-column: span 1; }
 .w-2 { grid-column: span 2; }
-.w-solido {
-  background: var(--acento); color: var(--tinta-acento); border-color: transparent;
-  box-shadow: 0 18px 36px -22px color-mix(in srgb, var(--acento) 80%, transparent);
-}
-.w-solido .titulo-tarjeta, .w-solido .texto-suave { color: color-mix(in srgb, var(--tinta-acento) 70%, transparent); }
-.w-alerta { border-color: color-mix(in srgb, var(--peligro) 55%, var(--linea)); background: color-mix(in srgb, var(--peligro) 8%, var(--sup)); }
 .pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 700; background: rgba(255,255,255,0.12); width: fit-content; }
 .pill[data-signo="sube"] { color: var(--ok); }
 .pill[data-signo="baja"] { color: var(--peligro); }
@@ -415,8 +390,8 @@ select.campo {
   background: linear-gradient(155deg, var(--vidrio-a), var(--vidrio-b));
   border: 1px solid var(--borde-vidrio);
   box-shadow: inset 0 1px 0 var(--brillo), inset 0 -1px 0 var(--linea), var(--sombra);
-  backdrop-filter: blur(14px) saturate(1.3);
-  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  backdrop-filter: blur(10px) saturate(1.6);
+  -webkit-backdrop-filter: blur(10px) saturate(1.6);
 }
 .tarjeta::before {
   content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
@@ -424,46 +399,24 @@ select.campo {
 }
 .tarjeta-click:active { background: linear-gradient(155deg, var(--vidrio-a), var(--vidrio-b)); transform: scale(0.985); }
 
-/* Tarjeta principal: esfera de color como en la referencia (desenfoque suave + esfera nítida al borde). */
-.tarjeta-orbe {
-  position: relative; overflow: hidden; isolation: isolate;
+/* Esmerilado: vidrio translúcido con grano fino. Deja pasar el color del fondo (sin color propio) y lo suaviza
+   apenas; no hay esferas ni manchas desenfocadas. Todas las tarjetas comparten esta receta. */
+:root { --grano: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); --grano-op: 0.2; }
+:root[data-tema="oscuro"] { --grano-op: 0.13; }
+.tarjeta::after, .cabecera::after, .boton-cab::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background-image: var(--grano); opacity: var(--grano-op); mix-blend-mode: overlay;
+}
+
+/* Tarjeta principal: la misma receta, más grande y con el reflejo más marcado. */
+.tarjeta.tarjeta-principal {
   padding: 22px; border-radius: 34px;
-  background: linear-gradient(172deg, #fffdfa 0%, #f4ebe0 100%);
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  box-shadow: inset 0 1px 0 #fff, var(--sombra);
-  color: #1c1915;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--vidrio-a) 120%, transparent), var(--vidrio-b));
+  backdrop-filter: blur(12px) saturate(1.7); -webkit-backdrop-filter: blur(12px) saturate(1.7);
 }
-:root[data-tema="oscuro"] .tarjeta-orbe { background: linear-gradient(172deg, #1b1a19 0%, #100f0f 100%); border-color: rgba(255, 255, 255, 0.1); color: #f4f2ee; }
-.tarjeta-orbe::before {
-  content: ""; position: absolute; z-index: -2; width: 190px; height: 190px; right: 14px; top: 50%; transform: translateY(-50%);
-  border-radius: 50%; filter: blur(26px); opacity: 0.85;
-  background: radial-gradient(circle, var(--acento-vivo) 0%, color-mix(in srgb, var(--acento-vivo) 45%, transparent) 50%, transparent 72%);
-}
-.tarjeta-orbe::after {
-  content: ""; position: absolute; z-index: -1; width: 128px; height: 128px; right: -40px; top: 50%; transform: translateY(-50%);
-  border-radius: 50%; mix-blend-mode: normal; opacity: 1; background-image: none; inset: auto -40px auto auto;
-  background: radial-gradient(circle at 34% 28%, #ffd09a 0%, var(--acento-vivo) 52%, color-mix(in srgb, var(--acento-vivo) 70%, #7a1d00) 100%);
-  box-shadow: 0 18px 34px -12px color-mix(in srgb, var(--acento-vivo) 70%, transparent);
-}
-.tarjeta-orbe > * { max-width: 76%; }
-.tarjeta-orbe .texto-suave { color: color-mix(in srgb, currentColor 58%, transparent); }
-.tarjeta-orbe .titulo-tarjeta { color: color-mix(in srgb, currentColor 58%, transparent) !important; }
-.tarjeta-orbe .monto { font-size: clamp(30px, 9.5vw, 42px); font-weight: 500; }
+.tarjeta-principal .monto { font-size: clamp(34px, 11vw, 48px); font-weight: 500; }
 
-/* Tarjeta de tinta (la negra de la referencia): para lo que pide acción. */
-.tarjeta.w-solido {
-  background: linear-gradient(160deg, #2c2a28 0%, #151413 100%);
-  color: #f7f2ec; border-color: rgba(255, 255, 255, 0.08); backdrop-filter: none; -webkit-backdrop-filter: none;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 22px 40px -22px rgba(20, 12, 6, 0.7);
-  overflow: hidden;
-}
-.tarjeta.w-solido::before {
-  inset: auto -30px -40px auto; width: 120px; height: 120px; border-radius: 50%; filter: blur(14px);
-  background: radial-gradient(circle, var(--acento-vivo), transparent 70%); opacity: 0.8;
-}
-.w-solido .titulo-tarjeta, .w-solido .texto-suave { color: rgba(247, 242, 236, 0.62); }
-.w-alerta { background: linear-gradient(155deg, color-mix(in srgb, var(--peligro) 14%, var(--vidrio-a)), var(--vidrio-b)); }
-
+/* Ningún widget trae color propio: "solido" y "alerta" usan el mismo vidrio. */
 /* Botones: píldoras de tinta con brillo; la acción principal es oscura sobre fondo claro. */
 .boton, .boton-chico {
   background: linear-gradient(180deg, color-mix(in srgb, var(--tinta) 88%, #fff), var(--tinta));
@@ -568,7 +521,6 @@ select.campo { background-position: right 20px center; padding-right: 46px; }
 .avatar { background: radial-gradient(circle at 30% 25%, #ffc88a, var(--acento-vivo) 58%, color-mix(in srgb, var(--acento-vivo) 60%, #5a1500)); box-shadow: 0 10px 18px -10px color-mix(in srgb, var(--acento-vivo) 80%, transparent); }
 .esqueleto { background: linear-gradient(90deg, var(--vidrio-b) 25%, var(--vidrio-a) 50%, var(--vidrio-b) 75%); background-size: 200% 100%; border: 1px solid var(--borde-vidrio); }
 .pill { background: color-mix(in srgb, currentColor 10%, transparent); }
-.tarjeta-orbe .pill[data-signo="sube"] { color: var(--ok); }
 .agregar-widgets { border: 1.5px dashed var(--sup-3); border-radius: 26px; background: linear-gradient(155deg, var(--vidrio-b), transparent); }
 .tiempo[data-estado="proximo"] .tiempo-punto { background: var(--acento-vivo); box-shadow: 0 0 0 4px color-mix(in srgb, var(--acento-vivo) 25%, transparent); }
 .chip-pequeno { background: color-mix(in srgb, var(--texto) 8%, transparent); }
@@ -588,3 +540,41 @@ select.campo { background-position: right 20px center; padding-right: 46px; }
 .logo-marco { display: grid; place-items: center; flex: none; overflow: hidden; border-radius: 26%; background: linear-gradient(155deg, #fff, color-mix(in srgb, var(--acento-vivo) 25%, #fff)); color: #1c1915; border: 1px solid var(--borde-vidrio); box-shadow: inset 0 1px 0 #fff, var(--sombra-chica); }
 .logo-marco img { width: 100%; height: 100%; object-fit: cover; display: block; }
 :root[data-tema="oscuro"] .logo-marco { background: linear-gradient(155deg, rgba(255,255,255,0.16), color-mix(in srgb, var(--acento-vivo) 35%, transparent)); color: #fff; }
+
+/* ---------- Cabecera fija ---------- */
+/* Queda pegada arriba (vidrio esmerilado) y se esconde con demora al bajar; vuelve al subir. */
+.cabecera {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin: calc(-1 * (env(safe-area-inset-top, 0px) + 18px)) -18px 0;
+  padding: calc(env(safe-area-inset-top, 0px) + 14px) 18px 12px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--fondo) 66%, transparent), color-mix(in srgb, var(--fondo) 40%, transparent));
+  backdrop-filter: blur(14px) saturate(1.6); -webkit-backdrop-filter: blur(14px) saturate(1.6);
+  border-bottom: 1px solid var(--borde-vidrio);
+  box-shadow: inset 0 -1px 0 var(--linea);
+  transition: transform 0.38s cubic-bezier(0.22, 0.8, 0.24, 1), opacity 0.28s;
+}
+.cabecera > * { position: relative; z-index: 1; }
+.cabecera[data-oculta="true"] { transform: translateY(-115%); opacity: 0; pointer-events: none; }
+/* Con la cabecera escondida queda una franja esmerilada detrás de la hora y la batería. */
+.barra-estado {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 19; height: env(safe-area-inset-top, 0px);
+  background: color-mix(in srgb, var(--fondo) 55%, transparent);
+  backdrop-filter: blur(14px) saturate(1.5); -webkit-backdrop-filter: blur(14px) saturate(1.5);
+  opacity: 0; transition: opacity 0.28s; pointer-events: none;
+}
+.cabecera[data-oculta="true"] + .barra-estado { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .cabecera, .barra-estado { transition: none; } }
+
+.boton-cab {
+  position: relative; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; color: var(--texto);
+  background: linear-gradient(155deg, var(--vidrio-a), var(--vidrio-b));
+  border: 1px solid var(--borde-vidrio);
+  box-shadow: inset 0 1px 0 var(--brillo), var(--sombra-chica);
+  backdrop-filter: blur(10px) saturate(1.6); -webkit-backdrop-filter: blur(10px) saturate(1.6);
+  transition: transform 0.12s;
+}
+.boton-cab:active { transform: scale(0.93); }
+.boton-cab[aria-pressed="true"] { color: var(--acento); box-shadow: inset 0 1px 0 var(--brillo), 0 0 0 1.5px var(--acento-vivo), var(--sombra-chica); }
+.boton-cab:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+.boton-cab > * { position: relative; z-index: 1; }

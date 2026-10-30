@@ -56,12 +56,12 @@ export default function Resumen({ yo, equipo }: Props) {
   return (
     <section className="flex flex-col gap-4">
       <Segmentado etiqueta="Período" valor={periodo} onCambio={(p) => { setCargando(true); setPeriodo(p); }}
-        opciones={[{ valor: "hoy", texto: "Hoy" }, { valor: "semana", texto: "7 días" }, { valor: "mes", texto: "Mes" }, { valor: "anio", texto: "Año" }]} />
+        opciones={[{ valor: "hoy", texto: "Hoy" }, { valor: "semana", texto: "Esta semana" }, { valor: "mes", texto: "Mes" }, { valor: "anio", texto: "Año" }]} />
 
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       {cargando ? <p className="texto-suave">Cargando…</p> : (
         <>
-          <div className="tarjeta-orbe flex flex-col gap-3">
+          <div className="tarjeta tarjeta-principal flex flex-col gap-3">
             <div>
               <p className="texto-suave text-sm font-semibold">Vendido</p>
               <p className="monto text-[40px] leading-none">{formatearARS(total)}</p>
