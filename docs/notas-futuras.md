@@ -7,5 +7,6 @@ historial de pagos). Hoy existen la liquidación (`settle_commissions`) y el wid
 Pendiente de diseñar con el dueño: qué ve el barbero, si confirma que recibió el pago, y cómo se relaciona con
 el cierre diario. No implementar sin su aprobación.
 
-## Pantallas que todavía tienen formularios en línea (pasarlos a modal)
-Presupuestos, gastos recurrentes y proveedores (`GastosAvanzados.tsx`), Metas, Horarios y Módulos (`AjustesNegocio.tsx`).
+## Pendiente de verificar en navegador real
+La app se sirve en `/b/<dirección>/` con el HTML de la raíz. Si Next muestra un 404 o parpadea al hidratar en esa ruta,
+plan B: que el Worker inyecte `history.replaceState(null, "", "/")` antes de que arranque la app y guardar la marca en localStorage.

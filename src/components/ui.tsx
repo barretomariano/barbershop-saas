@@ -145,7 +145,7 @@ export function Anillo({ pct, tam = 84, children }: { pct: number; tam?: number;
     <div style={{ position: "relative", width: tam, height: tam }} role="progressbar" aria-valuenow={p} aria-valuemin={0} aria-valuemax={100}>
       <svg width={tam} height={tam} viewBox="0 0 80 80" style={{ transform: "rotate(-90deg)" }}>
         <circle cx="40" cy="40" r={r} fill="none" stroke="var(--linea)" strokeWidth="8" />
-        <circle cx="40" cy="40" r={r} fill="none" stroke="var(--acento)" strokeWidth="8" strokeLinecap="round"
+        <circle cx="40" cy="40" r={r} fill="none" stroke="var(--acento-vivo)" strokeWidth="8" strokeLinecap="round"
           strokeDasharray={c} strokeDashoffset={c - (c * p) / 100} />
       </svg>
       <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}>{children}</div>

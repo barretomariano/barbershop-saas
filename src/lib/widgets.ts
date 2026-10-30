@@ -7,7 +7,7 @@ import type { ModuloNegocio, Rol } from "./tipos";
 // opcionales elegidos (public.user_widgets.layout), con ids como "inicio:medios_pago".
 export type IdWidget =
   | "ventas" | "ganancia" | "metas" | "por_cobrar" | "turnos_hoy"
-  | "por_servicio" | "medios_pago" | "por_barbero" | "comision" | "alertas" | "ticket" | "gastos_cat" | "desglose";
+  | "por_servicio" | "medios_pago" | "por_barbero" | "comision" | "alertas" | "ticket" | "gastos_cat" | "desglose" | "impulso";
 
 export type Zona = "inicio" | "resumen";
 export type Presencia = "fijo" | "opcional";
@@ -30,6 +30,7 @@ const GESTION: Rol[] = ["OWNER", "MANAGER"];
 // El orden de este catálogo es el orden en pantalla.
 export const CATALOGO: DefWidget[] = [
   { id: "ventas", titulo: "Ventas", descripcion: "Total vendido y comparación con el período anterior.", roles: TODOS, tamano: "l", zonas: { inicio: "fijo", resumen: "fijo" } },
+  { id: "impulso", titulo: "Tu impulso", descripcion: "Cuánto falta para tu meta o tu mejor día.", roles: TODOS, tamano: "l", zonas: { inicio: "fijo" } },
   { id: "ganancia", titulo: "Ganancia", descripcion: "Lo que te queda a vos o al local.", roles: TODOS, tamano: "s", zonas: { inicio: "fijo", resumen: "fijo" } },
   { id: "por_cobrar", titulo: "Por cobrar", descripcion: "Turnos terminados que faltan cobrar.", roles: TODOS, modulo: "AGENDA", tamano: "s", zonas: { inicio: "fijo" } },
   { id: "turnos_hoy", titulo: "Turnos de hoy", descripcion: "Los turnos del día en orden.", roles: TODOS, modulo: "AGENDA", tamano: "l", zonas: { inicio: "fijo" } },

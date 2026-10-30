@@ -6,19 +6,47 @@ import { formatearARS } from "@/lib/dinero";
 import { mesActual, rangoPeriodo } from "@/lib/periodos";
 import { alertasDePresupuesto, nivelPresupuesto } from "@/lib/gestion";
 import { parsearMonto } from "@/lib/validacion";
+import { BotonAccion, Campo, EncabezadoHoja, Fichas, Hoja, Icono, PieHoja, type NombreIcono } from "@/components/ui";
 import { CATEGORIAS_GASTO, type CategoriaGasto, type FilaResumenGastos, type GastoRecurrente, type Membresia, type Presupuesto, type Proveedor } from "@/lib/tipos";
 
 const TELEFONO_OK = /^[0-9+() -]{6,20}$/;
 const etiqueta = (c: CategoriaGasto) => CATEGORIAS_GASTO.find((x) => x.valor === c)?.etiqueta ?? c;
 
+type Abierto = "pres" | "rec" | "prov";
+const FILAS: { id: Abierto; titulo: string; detalle: string; icono: NombreIcono }[] = [
+  { id: "pres", titulo: "Presupuesto del mes", detalle: "Un tope por categoría, con aviso", icono: "metas" },
+  { id: "rec", titulo: "Gastos que se repiten", detalle: "Alquiler, servicios: se cargan solos", icono: "historial" },
+  { id: "prov", titulo: "Proveedores", detalle: "A quién le comprás", icono: "equipo" },
+];
+
 export default function GastosAvanzados({ yo, onGenerado }: { yo: Membresia; onGenerado: () => void }) {
   const [version, setVersion] = useState(0);
+  const [abierto, setAbierto] = useState<Abierto | null>(null);
   const recargar = useCallback(() => setVersion((v) => v + 1), []);
+  const fila = FILAS.find((f) => f.id === abierto);
   return (
-    <div className="flex flex-col gap-8">
-      <Presupuestos yo={yo} version={version} />
-      <Recurrentes yo={yo} version={version} onCambio={recargar} onGenerado={onGenerado} />
-      <Proveedores yo={yo} version={version} onCambio={recargar} />
+    <div className="flex flex-col gap-2">
+      <p className="titulo-tarjeta px-2">Gestión</p>
+      <div className="grupo-ajustes">
+        {FILAS.map((f) => (
+          <button key={f.id} className="fila-ajuste" onClick={() => setAbierto(f.id)}>
+            <span className="icono-caja"><Icono nombre={f.icono} tam={20} /></span>
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="font-semibold">{f.titulo}</span>
+              <span className="texto-suave truncate text-sm">{f.detalle}</span>
+            </span>
+            <Icono nombre="siguiente" tam={18} className="texto-suave" />
+          </button>
+        ))}
+      </div>
+      {fila && (
+        <Hoja titulo={fila.titulo} onCerrar={() => setAbierto(null)} ancho>
+          <EncabezadoHoja titulo={fila.titulo} detalle={fila.detalle} onCerrar={() => setAbierto(null)} />
+          {abierto === "pres" && <Presupuestos yo={yo} version={version} />}
+          {abierto === "rec" && <Recurrentes yo={yo} version={version} onCambio={recargar} onGenerado={onGenerado} />}
+          {abierto === "prov" && <Proveedores yo={yo} version={version} onCambio={recargar} />}
+        </Hoja>
+      )}
     </div>
   );
 }
@@ -67,7 +95,6 @@ function Presupuestos({ yo, version }: { yo: Membresia; version: number }) {
   const alertas = alertasDePresupuesto(gastos, pres);
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="font-medium">Presupuesto del mes</h2>
       {alertas.map((a) => (
         <p key={a.categoria} role="status" className={`tarjeta text-sm ${a.nivel === "excedido" ? "text-red-600" : ""}`} style={{ borderColor: a.nivel === "excedido" ? "var(--peligro)" : "var(--acento)" }}>
           {a.nivel === "excedido" ? "Te pasaste" : "Estás cerca del límite"} en {etiqueta(a.categoria)}: {formatearARS(a.gastado)} de {formatearARS(a.presupuesto)}.
@@ -101,6 +128,7 @@ function Recurrentes({ yo, version, onCambio, onGenerado }: { yo: Membresia; ver
   const [dia, setDia] = useState(1);
   const [proveedor, setProveedor] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
+  const [nuevo, setNuevo] = useState(false);
 
   useEffect(() => {
     let vivo = true;
@@ -123,7 +151,7 @@ function Recurrentes({ yo, version, onCambio, onGenerado }: { yo: Membresia; ver
       business_id: yo.business_id, category: categoria, description: detalle.trim() || null, amount: m, day_of_month: dia, supplier_id: proveedor || null,
     });
     if (error) { setMsg("No se pudo guardar."); return; }
-    setMonto(""); setDetalle(""); setMsg(null);
+    setMonto(""); setDetalle(""); setMsg(null); setNuevo(false);
     const { data } = await getSupabase().rpc("generate_recurring_expenses", { p_business: yo.business_id });
     if (Number(data) > 0) onGenerado();
     onCambio();
@@ -136,8 +164,8 @@ function Recurrentes({ yo, version, onCambio, onGenerado }: { yo: Membresia; ver
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="font-medium">Gastos que se repiten cada mes</h2>
       <p className="texto-suave text-sm">Se cargan solos una vez por mes, a partir del día que elijas (1 a 28).</p>
+      <BotonAccion texto="Agregar gasto mensual" onClick={() => { setMsg(null); setNuevo(true); }} />
       <ul className="flex flex-col gap-1 text-sm">
         {lista.map((r) => (
           <li key={r.id} className={`flex items-center justify-between gap-2 ${r.active ? "" : "opacity-60"}`}>
@@ -147,26 +175,38 @@ function Recurrentes({ yo, version, onCambio, onGenerado }: { yo: Membresia; ver
         ))}
         {lista.length === 0 && <li className="texto-suave">Todavía no cargaste ninguno.</li>}
       </ul>
-      <div className="flex flex-col gap-2 tarjeta">
-        <select className="campo" value={categoria} onChange={(e) => setCategoria(e.target.value as CategoriaGasto)} aria-label="Categoría">
-          {CATEGORIAS_GASTO.map((c) => <option key={c.valor} value={c.valor}>{c.etiqueta}</option>)}
-        </select>
-        <input className="campo" placeholder="Detalle (ej. Alquiler del local)" maxLength={200} value={detalle} onChange={(e) => setDetalle(e.target.value)} />
-        <div className="flex gap-2">
-          <input className="campo" inputMode="numeric" placeholder="Monto" value={monto} onChange={(e) => setMonto(e.target.value)} />
-          <select className="campo w-32" value={dia} onChange={(e) => setDia(Number(e.target.value))} aria-label="Día del mes">
-            {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => <option key={d} value={d}>Día {d}</option>)}
-          </select>
-        </div>
-        {proveedores.length > 0 && (
-          <select className="campo" value={proveedor} onChange={(e) => setProveedor(e.target.value)} aria-label="Proveedor">
-            <option value="">Sin proveedor</option>
-            {proveedores.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
-        )}
-        {msg && <p role="alert" className="text-sm text-red-600">{msg}</p>}
-        <button className="boton-chico self-start" onClick={agregar}>Agregar gasto mensual</button>
-      </div>
+      {nuevo && (
+        <Hoja titulo="Nuevo gasto mensual" onCerrar={() => setNuevo(false)}>
+          <div className="formulario">
+            <EncabezadoHoja titulo="Nuevo gasto mensual" onCerrar={() => setNuevo(false)} />
+            <div className="campo-grupo">
+              <span className="campo-etiqueta">Categoría</span>
+              <Fichas etiqueta="Categoría" valor={categoria} onCambio={setCategoria} opciones={CATEGORIAS_GASTO.map((c) => ({ valor: c.valor, texto: c.etiqueta }))} />
+            </div>
+            <Campo etiqueta="Detalle"><input className="campo" placeholder="Ej. Alquiler del local" maxLength={200} value={detalle} onChange={(e) => setDetalle(e.target.value)} /></Campo>
+            <div className="fila-2">
+              <Campo etiqueta="Monto"><input className="campo" inputMode="numeric" placeholder="$ 0" value={monto} onChange={(e) => setMonto(e.target.value)} /></Campo>
+              <Campo etiqueta="Día del mes">
+                <select className="campo" value={dia} onChange={(e) => setDia(Number(e.target.value))}>
+                  {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => <option key={d} value={d}>Día {d}</option>)}
+                </select>
+              </Campo>
+            </div>
+            {proveedores.length > 0 && (
+              <Campo etiqueta="Proveedor">
+                <select className="campo" value={proveedor} onChange={(e) => setProveedor(e.target.value)}>
+                  <option value="">Sin proveedor</option>
+                  {proveedores.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </Campo>
+            )}
+            <PieHoja>
+              {msg && <p role="alert" className="text-sm text-red-600">{msg}</p>}
+              <button className="boton" onClick={agregar}>Agregar gasto mensual</button>
+            </PieHoja>
+          </div>
+        </Hoja>
+      )}
     </section>
   );
 }
@@ -176,6 +216,7 @@ function Proveedores({ yo, version, onCambio }: { yo: Membresia; version: number
   const [nombre, setNombre] = useState("");
   const [telefono, setTelefono] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
+  const [nuevo, setNuevo] = useState(false);
 
   useEffect(() => {
     let vivo = true;
@@ -189,7 +230,7 @@ function Proveedores({ yo, version, onCambio }: { yo: Membresia; version: number
     if (telefono && !TELEFONO_OK.test(telefono)) { setMsg("Teléfono no válido."); return; }
     const { error } = await getSupabase().from("suppliers").insert({ business_id: yo.business_id, name: nombre.trim(), phone: telefono.trim() || null });
     if (error) { setMsg(error.message.includes("duplicate") ? "Ya existe un proveedor con ese nombre." : "No se pudo guardar."); return; }
-    setNombre(""); setTelefono(""); setMsg(null); onCambio();
+    setNombre(""); setTelefono(""); setMsg(null); setNuevo(false); onCambio();
   }
 
   async function quitar(id: string) {
@@ -199,17 +240,24 @@ function Proveedores({ yo, version, onCambio }: { yo: Membresia; version: number
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="font-medium">Proveedores</h2>
+      <BotonAccion texto="Agregar proveedor" onClick={() => { setMsg(null); setNuevo(true); }} />
       <ul className="flex flex-col gap-1 text-sm">
         {lista.map((p) => <li key={p.id} className="flex justify-between"><span>{p.name}{p.phone ? ` · ${p.phone}` : ""}</span><button className="text-xs underline" onClick={() => quitar(p.id)}>Quitar</button></li>)}
         {lista.length === 0 && <li className="texto-suave">Todavía no cargaste proveedores.</li>}
       </ul>
-      <div className="flex flex-wrap gap-2">
-        <input className="campo flex-1" placeholder="Nombre" maxLength={80} value={nombre} onChange={(e) => setNombre(e.target.value)} />
-        <input className="campo w-40" inputMode="tel" placeholder="Teléfono" value={telefono} onChange={(e) => setTelefono(e.target.value)} />
-        <button className="boton-chico" onClick={agregar}>Agregar</button>
-      </div>
-      {msg && <p role="alert" className="text-sm text-red-600">{msg}</p>}
+      {nuevo && (
+        <Hoja titulo="Nuevo proveedor" onCerrar={() => setNuevo(false)}>
+          <div className="formulario">
+            <EncabezadoHoja titulo="Nuevo proveedor" onCerrar={() => setNuevo(false)} />
+            <Campo etiqueta="Nombre"><input className="campo" maxLength={80} value={nombre} onChange={(e) => setNombre(e.target.value)} /></Campo>
+            <Campo etiqueta="Teléfono (opcional)"><input className="campo" inputMode="tel" value={telefono} onChange={(e) => setTelefono(e.target.value)} /></Campo>
+            <PieHoja>
+              {msg && <p role="alert" className="text-sm text-red-600">{msg}</p>}
+              <button className="boton" onClick={agregar}>Agregar proveedor</button>
+            </PieHoja>
+          </div>
+        </Hoja>
+      )}
     </section>
   );
 }

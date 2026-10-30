@@ -12,6 +12,7 @@ import Auditoria from "@/components/Auditoria";
 import Equipo from "@/components/Equipo";
 import Clientes from "@/components/Clientes";
 import Apariencia from "@/components/Apariencia";
+import MiMarca from "@/components/MiMarca";
 
 interface Props {
   yo: Membresia; equipo: Membresia[]; negocio: DatosNegocio; sub: SubAjustes | null; onSub: (s: SubAjustes | null) => void; onCambio: () => void;
@@ -19,6 +20,7 @@ interface Props {
 }
 
 const FICHA: Record<SubAjustes, { titulo: string; detalle: string; icono: NombreIcono }> = {
+  marca: { titulo: "Mi barbería", detalle: "Nombre, logo y link de tu app", icono: "apariencia" },
   clientes: { titulo: "Clientes", detalle: "Fichas, teléfonos e historial", icono: "clientes" },
   servicios: { titulo: "Servicios y precios", detalle: "Lo que ofrecés y cuánto cuesta", icono: "servicios" },
   equipo: { titulo: "Equipo", detalle: "Barberos, encargados y accesos", icono: "equipo" },
@@ -31,7 +33,7 @@ const FICHA: Record<SubAjustes, { titulo: string; detalle: string; icono: Nombre
 };
 
 const GRUPOS: { titulo: string; items: SubAjustes[] }[] = [
-  { titulo: "Tu barbería", items: ["clientes", "servicios", "equipo", "comisiones", "horarios", "metas"] },
+  { titulo: "Tu barbería", items: ["marca", "clientes", "servicios", "equipo", "comisiones", "horarios", "metas"] },
   { titulo: "App", items: ["modulos", "apariencia", "historial"] },
 ];
 
@@ -43,6 +45,7 @@ export default function AjustesHub({ yo, equipo, negocio, sub, onSub, onCambio, 
   if (abierta) {
     const f = FICHA[abierta];
     let contenido: ReactNode = null;
+    if (abierta === "marca") contenido = <MiMarca yo={yo} nombre={negocio.nombre} slug={negocio.slug} logoVersion={negocio.logoVersion} onCambio={onCambio} />;
     if (abierta === "clientes") contenido = <Clientes yo={yo} />;
     if (abierta === "servicios") contenido = <Servicios yo={yo} hayAgenda={hayAgenda} />;
     if (abierta === "equipo") contenido = <Equipo negocio={yo.business_id} onCambio={onCambio} />;

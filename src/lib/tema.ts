@@ -1,4 +1,4 @@
-// Apariencia de la app: tema (oscuro por defecto, claro opcional) y color de énfasis del negocio.
+// Apariencia de la app: tema (claro cálido por defecto, oscuro opcional) y color de énfasis del negocio.
 // El tema es una preferencia de cada dispositivo. El color de énfasis lo elige el dueño y vale para todo el negocio
 // (se guarda en businesses.accent). Una paleta cerrada y curada evita colores que no se leen bien.
 
@@ -14,7 +14,7 @@ export interface Acento {
 }
 
 export const ACENTOS: Acento[] = [
-  { id: "brasa", nombre: "Brasa", base: "#FF7A3D", fuerte: "#C94A12", par: "#3E63FF" },
+  { id: "brasa", nombre: "Brasa", base: "#FF7A3D", fuerte: "#B9420F", par: "#3E63FF" },
   { id: "ambar", nombre: "Ámbar", base: "#F5B83D", fuerte: "#8F5B00", par: "#E5484D" },
   { id: "jade", nombre: "Jade", base: "#34C796", fuerte: "#0B7556", par: "#3E63FF" },
   { id: "cobalto", nombre: "Cobalto", base: "#5B8CFF", fuerte: "#2150D0", par: "#FF8A5B" },
@@ -23,7 +23,7 @@ export const ACENTOS: Acento[] = [
 ];
 
 export const ACENTO_POR_DEFECTO: IdAcento = "brasa";
-export const TEMA_POR_DEFECTO: Tema = "oscuro";
+export const TEMA_POR_DEFECTO: Tema = "claro";
 
 export const CLAVE_TEMA = "barberia.tema";
 export const CLAVE_ACENTO = "barberia.acento";
@@ -49,6 +49,7 @@ export function variablesDeAcento(id: unknown, tema: Tema): Record<string, strin
   return {
     "--acento": tema === "oscuro" ? a.base : a.fuerte,
     "--tinta-acento": tema === "oscuro" ? TINTA_OSCURA : TINTA_CLARA,
+    "--acento-vivo": a.base,
     "--par": a.par,
   };
 }
@@ -73,7 +74,7 @@ export function aplicarApariencia(tema: Tema, acento: unknown): void {
   raiz.dataset.tema = tema;
   for (const [k, v] of Object.entries(variablesDeAcento(acento, tema))) raiz.style.setProperty(k, v);
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", tema === "oscuro" ? "#0B0B0C" : "#F3F0EA");
+  if (meta) meta.setAttribute("content", tema === "oscuro" ? "#0D0C0C" : "#EFE6DB");
 }
 
 export function leerTema(): Tema {
@@ -97,4 +98,4 @@ export function guardarLocal(clave: string, valor: string): void {
 // Script que corre antes de pintar para que no haya parpadeo de colores al abrir la app.
 export const SCRIPT_INICIAL = `(function(){try{var t=localStorage.getItem("${CLAVE_TEMA}");var a=localStorage.getItem("${CLAVE_ACENTO}");var P=${JSON.stringify(
   Object.fromEntries(ACENTOS.map((x) => [x.id, [x.base, x.fuerte, x.par]])),
-)};var c=P[a]||P.brasa;var o=t!=="claro";var r=document.documentElement;r.dataset.tema=o?"oscuro":"claro";r.style.setProperty("--acento",o?c[0]:c[1]);r.style.setProperty("--tinta-acento",o?"${TINTA_OSCURA}":"${TINTA_CLARA}");r.style.setProperty("--par",c[2]);}catch(e){}})();`;
+)};var c=P[a]||P.brasa;var o=t==="oscuro";var r=document.documentElement;r.dataset.tema=o?"oscuro":"claro";r.style.setProperty("--acento",o?c[0]:c[1]);r.style.setProperty("--tinta-acento",o?"${TINTA_OSCURA}":"${TINTA_CLARA}");r.style.setProperty("--acento-vivo",c[0]);r.style.setProperty("--par",c[2]);}catch(e){}})();`;

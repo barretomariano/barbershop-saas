@@ -23,3 +23,11 @@ Cloudflare vuelve a publicar solo.
 
 ## Instalar en el celular
 Abrir la dirección en Chrome (Android) → menú ⋮ → *Instalar app* / *Agregar a pantalla de inicio*. En iPhone: Safari → Compartir → *Agregar a inicio*.
+
+## Marca propia por barbería (link `/b/<dirección>`)
+`wrangler.jsonc` incluye un Worker (`worker/index.js`) que atiende solo las rutas `/b/*`: arma el manifiesto de la PWA con el
+nombre y el logo de la barbería y reescribe el título y los íconos de la página. Todo lo demás son archivos estáticos.
+- Necesita la migración `20261029000011_marca_propia.sql` aplicada en Supabase (columnas, funciones y bucket público `logos`).
+- Las variables `SUPABASE_URL` y `SUPABASE_ANON_KEY` del Worker están en `wrangler.jsonc` (son públicas, no secretas).
+- El dueño configura nombre, dirección y logo en Ajustes → Mi barbería. El link queda `https://<sitio>/b/<dirección>`.
+- Si el proyecto está publicado como **Pages** y no como **Workers**, el Worker no corre: hay que publicarlo como Workers con assets.

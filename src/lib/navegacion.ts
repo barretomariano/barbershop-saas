@@ -3,7 +3,7 @@ import type { ModuloNegocio, Rol } from "./tipos";
 // La app tiene 4 pestañas fijas abajo. Agenda aparece solo si el módulo está encendido.
 export type Tab = "inicio" | "agenda" | "resumen" | "ajustes";
 export type SubResumen = "panorama" | "ventas" | "reportes" | "caja" | "gastos";
-export type SubAjustes = "clientes" | "servicios" | "equipo" | "comisiones" | "horarios" | "modulos" | "metas" | "apariencia" | "historial";
+export type SubAjustes = "marca" | "clientes" | "servicios" | "equipo" | "comisiones" | "horarios" | "modulos" | "metas" | "apariencia" | "historial";
 
 // Todo lugar al que puede llevar un widget o un botón.
 export type Destino = "inicio" | "agenda" | SubResumen | "resumen" | "ajustes" | SubAjustes;
@@ -11,7 +11,7 @@ export type Destino = "inicio" | "agenda" | SubResumen | "resumen" | "ajustes" |
 export interface Ubicacion { tab: Tab; sub: SubResumen | SubAjustes | null }
 
 const RESUMEN: SubResumen[] = ["panorama", "ventas", "reportes", "caja", "gastos"];
-const AJUSTES: SubAjustes[] = ["clientes", "servicios", "equipo", "comisiones", "horarios", "modulos", "metas", "apariencia", "historial"];
+const AJUSTES: SubAjustes[] = ["marca", "clientes", "servicios", "equipo", "comisiones", "horarios", "modulos", "metas", "apariencia", "historial"];
 
 export function subResumenDisponibles(rol: Rol): SubResumen[] {
   return rol === "BARBER" ? ["panorama", "ventas", "reportes"] : RESUMEN;
@@ -25,7 +25,7 @@ export function subAjustesDisponibles(rol: Rol, modulos: ModuloNegocio[]): SubAj
     if (s === "horarios") return hayAgenda && rol !== "BARBER";
     if (s === "apariencia") return true;
     if (s === "servicios") return rol !== "BARBER";
-    if (s === "equipo" || s === "comisiones" || s === "modulos" || s === "metas" || s === "historial") return rol === "OWNER";
+    if (s === "marca" || s === "equipo" || s === "comisiones" || s === "modulos" || s === "metas" || s === "historial") return rol === "OWNER";
     return false;
   });
 }

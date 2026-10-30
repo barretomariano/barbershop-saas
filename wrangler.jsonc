@@ -1,8 +1,16 @@
 {
   "name": "barbershop-saas",
+  "main": "worker/index.js",
   "compatibility_date": "2026-10-01",
   "assets": {
     "directory": "./out",
-    "not_found_handling": "404-page"
+    "binding": "ASSETS",
+    "not_found_handling": "404-page",
+    "run_worker_first": ["/b/*"]
+  },
+  // Valores PÚBLICOS (la clave publishable no es secreta: la seguridad la pone RLS en Supabase).
+  "vars": {
+    "SUPABASE_URL": "https://dkdfttgqzbdckitumdda.supabase.co",
+    "SUPABASE_ANON_KEY": "sb_publishable_yVhTlUx6gB8EEODp7AyQCw_9Gpxhw2l"
   }
 }

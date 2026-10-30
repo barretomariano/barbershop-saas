@@ -37,3 +37,8 @@ Next.js + TypeScript (App Router), Tailwind, shadcn/ui, Supabase (Postgres, Auth
 Etapa E (diseño y experiencia) implementada en código. Migraciones 9 (color de énfasis) y 10 (editar turnos) pendientes de aplicar en Supabase; la 10 se probó en Postgres local con `supabase/tests/rls_editar_turnos_test.sql`. Sin la 9: sin ella la app funciona con el color por defecto y avisa al dueño al intentar cambiarlo.
 Verificado por Claude solo en local: lint, tipos, tests de lógica y build. NO verificado: ninguna pantalla nueva en navegador ni contra el Supabase real, ni la migración 9 en Postgres.
 Pendiente: sucursales y permisos configurables (plan Avanzado) y restricciones por plan (ver docs/planes.md).
+
+## Diseño visual (Etapa E3)
+- Tema claro cálido por defecto (oscuro opcional por dispositivo). Superficies de "vidrio líquido" definidas al final de `globals.css` (tarjetas translúcidas, brillo en el borde, esferas de color, botones de tinta en píldora). `--acento-vivo` es decorativo; `--acento` se usa para texto.
+- Inicio incluye el widget "Tu impulso" (`src/lib/impulso.ts`): meta, ritmo diario, mejor día de los últimos 90.
+- Marca propia: Ajustes → Mi barbería (nombre, dirección, logo). Migración 11 + Worker `worker/index.js` + `src/lib/manifest.ts`. Migraciones pendientes de aplicar por Maro: 9, 10 y 11.

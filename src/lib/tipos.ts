@@ -101,6 +101,8 @@ export interface DatosNegocio {
   plan: PlanNegocio;
   configuracionTerminada: boolean;
   modulos: ModuloNegocio[]; // los que están encendidos
+  slug: string | null;      // dirección del link de la barbería (/b/<slug>)
+  logoVersion: number;      // 0 = sin logo
 }
 
 export interface Cliente {

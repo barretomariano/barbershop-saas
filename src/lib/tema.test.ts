@@ -11,8 +11,8 @@ describe("apariencia", () => {
 
   it("el acento se lee también como texto sobre el fondo de cada tema", () => {
     for (const a of ACENTOS) {
-      expect(contraste(a.base, "#0B0B0C"), `${a.id} sobre oscuro`).toBeGreaterThanOrEqual(4.5);
-      expect(contraste(a.fuerte, "#F3F0EA"), `${a.id} sobre claro`).toBeGreaterThanOrEqual(4);
+      expect(contraste(a.base, "#0D0C0C"), `${a.id} sobre oscuro`).toBeGreaterThanOrEqual(4.5);
+      expect(contraste(a.fuerte, "#EFE6DB"), `${a.id} sobre claro`).toBeGreaterThanOrEqual(4);
     }
   });
 

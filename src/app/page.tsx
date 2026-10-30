@@ -1,5 +1,6 @@
 "use client";
 
+import { urlLogo } from "@/lib/marca";
 import { useCallback, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { getSupabase, supabaseConfigurado } from "@/lib/supabase";
@@ -126,9 +127,17 @@ function Panel({ userId }: { userId: string }) {
       <main className="pantalla flex flex-col gap-5">
         <header className="flex items-center justify-between gap-3">
           {activa === "inicio" ? (
-            <div className="min-w-0">
-              <h1 className="titulo truncate text-[38px] font-bold leading-[1.05]">{negocio.nombre || "Barbería"}</h1>
-              <p className="texto-suave mt-1 truncate text-[15px] font-medium">Hola, {nombrePila} · {rol}</p>
+            <div className="flex min-w-0 items-center gap-3">
+              {negocio.logoVersion > 0 && (
+                <span className="logo-marco" style={{ width: 52, height: 52 }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={urlLogo(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "", yo.business_id, negocio.logoVersion, 192)} alt="" width={52} height={52} />
+                </span>
+              )}
+              <div className="min-w-0">
+                <h1 className="titulo truncate text-[36px] leading-[1.05]">{negocio.nombre || "Barbería"}</h1>
+                <p className="texto-suave mt-1 truncate text-[15px] font-medium">Hola, {nombrePila} · {rol}</p>
+              </div>
             </div>
           ) : (
             <h1 className="titulo text-[28px] font-semibold leading-tight">{TITULO_TAB[activa]}</h1>
@@ -183,13 +192,16 @@ async function cargarDatos(userId: string): Promise<{ equipo: Membresia[]; negoc
   const mia = filas.find((m) => m.user_id === userId);
   if (!mia) return { equipo: filas, negocio: null, acento: null };
 
-  const [{ data: b }, { data: mods }, { data: color }] = await Promise.all([
+  const [{ data: b }, { data: mods }, { data: color }, { data: marcaFila }] = await Promise.all([
     sb.from("businesses").select("name,plan,setup_completed_at").eq("id", mia.business_id).single(),
     sb.from("business_modules").select("module,enabled").eq("business_id", mia.business_id),
     // Aparte: si todavía no existe la columna (migración 9), solo falla esta consulta y la app sigue con el color por defecto.
     sb.from("businesses").select("accent").eq("id", mia.business_id).maybeSingle(),
+    // Igual: si falta la migración 11, la app sigue sin marca propia.
+    sb.from("businesses").select("slug,logo_version").eq("id", mia.business_id).maybeSingle(),
   ]);
   const acentoDb = (color as { accent: unknown } | null)?.accent;
+  const marca = marcaFila as { slug: string | null; logo_version: number } | null;
   const fila = b as { name: string; plan: PlanNegocio; setup_completed_at: string | null } | null;
   const modulos = ((mods as { module: ModuloNegocio; enabled: boolean }[]) ?? []).filter((m) => m.enabled).map((m) => m.module);
   return {
@@ -200,6 +212,8 @@ async function cargarDatos(userId: string): Promise<{ equipo: Membresia[]; negoc
       plan: fila?.plan ?? "BASICO",
       configuracionTerminada: Boolean(fila?.setup_completed_at),
       modulos,
+      slug: marca?.slug ?? null,
+      logoVersion: marca?.logo_version ?? 0,
     },
   };
 }
