@@ -174,7 +174,7 @@ export function crearTablas(ahora: number = Date.now()): Tablas {
 
   return {
     memberships, services, clients, sales, appointments, expenses, cash_closings, suppliers,
-    businesses: [{ id: N, name: "Black Label Barbershop", plan: "INTERMEDIO", setup_completed_at: iso(ahora - 30 * MS_DIA), accent: null, slug: "black-label", logo_version: 0 }],
+    businesses: [{ id: N, name: "Black Label Barbershop", plan: "INTERMEDIO", setup_completed_at: iso(ahora - 30 * MS_DIA), accent: null, primary_color: "#D4F51F", secondary_color: "#7C5CFF", slug: "black-label", logo_version: 0 }],
     business_modules: [{ id: "bm-1", business_id: N, module: "AGENDA", enabled: true }, { id: "bm-2", business_id: N, module: "CLIENTES", enabled: true }],
     sales_goals: [{ id: "sg-1", business_id: N, barber_membership_id: null, month: mes, amount: 6500000 }, { id: "sg-2", business_id: N, barber_membership_id: "m-lucas", month: mes, amount: 1800000 }],
     budgets: [

@@ -18,7 +18,7 @@ import AjustesHub from "@/components/AjustesHub";
 import VentaModal, { type TurnoACobrar } from "@/components/VentaModal";
 import { Icono, type NombreIcono } from "@/components/ui";
 import { mostrarBotonVenta, pestanasVisibles, ubicar, type Destino, type SubAjustes, type SubResumen, type Tab } from "@/lib/navegacion";
-import { ACENTO_POR_DEFECTO, aplicarApariencia, esAcento, leerAcentoLocal, leerTema, guardarLocal, CLAVE_ACENTO, type IdAcento, type Tema } from "@/lib/tema";
+import { aplicarApariencia, CLAVE_MARCA, guardarLocal, leerMarcaLocal, leerPrefTema, marcaValida, MARCA_POR_DEFECTO, PREF_TEMA_POR_DEFECTO, serializarMarca, SUGERENCIAS, type Marca, type PrefTema } from "@/lib/tema";
 
 const COLUMNAS = "id,business_id,user_id,role,display_name,active,commission_model,commission_bps,commission_configured,fixed_monthly";
 const CLAVE_MONTOS = "montos-ocultos";
@@ -60,8 +60,8 @@ function Panel({ userId }: { userId: string }) {
   const [venta, setVenta] = useState<{ turno: TurnoACobrar | null } | null>(null);
   const [refresco, setRefresco] = useState(0);
   // Panel solo se dibuja después de iniciar sesión (en el navegador), así que se puede leer el dispositivo directo.
-  const [tema, setTema] = useState<Tema>(() => (typeof window === "undefined" ? "oscuro" : leerTema()));
-  const [acento, setAcento] = useState<IdAcento>(() => (typeof window === "undefined" ? ACENTO_POR_DEFECTO : leerAcentoLocal()));
+  const [pref, setPref] = useState<PrefTema>(() => (typeof window === "undefined" ? PREF_TEMA_POR_DEFECTO : leerPrefTema()));
+  const [marca, setMarca] = useState<Marca>(() => (typeof window === "undefined" ? MARCA_POR_DEFECTO : leerMarcaLocal()));
 
   // Privacidad: tapar los montos (se recuerda en este dispositivo). El interruptor vive en la cabecera.
   const [ocultos, setOcultos] = useState<boolean>(() => {
@@ -106,16 +106,24 @@ function Panel({ userId }: { userId: string }) {
       if (!vivo) return;
       setEquipo(r.equipo);
       setNegocio(r.negocio);
-      // El color del negocio manda sobre lo guardado en este dispositivo.
-      if (r.acento) {
-        setAcento(r.acento);
-        guardarLocal(CLAVE_ACENTO, r.acento);
+      // Los colores del negocio mandan sobre lo guardado en este dispositivo.
+      if (r.marca) {
+        setMarca(r.marca);
+        guardarLocal(CLAVE_MARCA, serializarMarca(r.marca));
       }
     });
     return () => { vivo = false; };
   }, [userId, version]);
 
-  useEffect(() => { aplicarApariencia(tema, acento); }, [tema, acento]);
+  // Tema y colores. En "Automático" se vuelve a aplicar cuando el celular cambia entre claro y oscuro.
+  useEffect(() => {
+    aplicarApariencia(pref, marca);
+    if (pref !== "auto" || typeof window.matchMedia !== "function") return;
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const alCambiar = () => aplicarApariencia("auto", marca);
+    mq.addEventListener("change", alCambiar);
+    return () => mq.removeEventListener("change", alCambiar);
+  }, [pref, marca]);
 
   if (equipo === null) return <Mensaje texto="Cargando…" />;
   const yo = equipo.find((m) => m.user_id === userId);
@@ -129,7 +137,7 @@ function Panel({ userId }: { userId: string }) {
 
   // El dueño elige qué módulos usar la primera vez que entra.
   if (yo.role === "OWNER" && !negocio.configuracionTerminada) {
-    return <PuestaEnMarcha yo={yo} negocio={negocio} onListo={cargar} />;
+    return <PuestaEnMarcha yo={yo} negocio={negocio} marca={marca} onMarca={setMarca} onListo={cargar} />;
   }
 
   const hayAgenda = negocio.modulos.includes("AGENDA");
@@ -198,7 +206,7 @@ function Panel({ userId }: { userId: string }) {
         {activa === "resumen" && <ResumenHub key={refresco} yo={yo} equipo={equipo} modulos={negocio.modulos} hayClientes={hayClientes} sub={subResumen} onSub={setSubResumen} irA={irA} />}
         {activa === "ajustes" && (
           <AjustesHub yo={yo} equipo={equipo} negocio={negocio} sub={subAjustes} onSub={setSubAjustes} onCambio={cargar}
-            tema={tema} acento={acento} onTema={setTema} onAcento={setAcento} />
+            pref={pref} marca={marca} onPref={setPref} onMarca={setMarca} />
         )}
       </main>
 
@@ -227,28 +235,35 @@ function Panel({ userId }: { userId: string }) {
   );
 }
 
-async function cargarDatos(userId: string): Promise<{ equipo: Membresia[]; negocio: DatosNegocio | null; acento: IdAcento | null }> {
+async function cargarDatos(userId: string): Promise<{ equipo: Membresia[]; negocio: DatosNegocio | null; marca: Marca | null }> {
   const sb = getSupabase();
   const { data } = await sb.from("memberships").select(COLUMNAS).eq("active", true);
   const filas = (data as Membresia[]) ?? [];
   const mia = filas.find((m) => m.user_id === userId);
-  if (!mia) return { equipo: filas, negocio: null, acento: null };
+  if (!mia) return { equipo: filas, negocio: null, marca: null };
 
-  const [{ data: b }, { data: mods }, { data: color }, { data: marcaFila }] = await Promise.all([
+  const [{ data: b }, { data: mods }, { data: colores, error: errColores }, { data: marcaFila }] = await Promise.all([
     sb.from("businesses").select("name,plan,setup_completed_at").eq("id", mia.business_id).single(),
     sb.from("business_modules").select("module,enabled").eq("business_id", mia.business_id),
-    // Aparte: si todavía no existe la columna (migración 9), solo falla esta consulta y la app sigue con el color por defecto.
-    sb.from("businesses").select("accent").eq("id", mia.business_id).maybeSingle(),
+    // Aparte: si todavía no existen las columnas (migración 13), solo falla esta consulta y se prueba con el color viejo (migración 9).
+    sb.from("businesses").select("primary_color,secondary_color").eq("id", mia.business_id).maybeSingle(),
     // Igual: si falta la migración 11, la app sigue sin marca propia.
     sb.from("businesses").select("slug,logo_version").eq("id", mia.business_id).maybeSingle(),
   ]);
-  const acentoDb = (color as { accent: unknown } | null)?.accent;
+  const c = colores as { primary_color: unknown; secondary_color: unknown } | null;
+  let marcaDb = errColores ? null : marcaValida(c?.primary_color, c?.secondary_color);
+  if (!marcaDb) {
+    // Barberías que solo tienen el color de la paleta vieja: se traduce a su par equivalente.
+    const { data: viejo } = await sb.from("businesses").select("accent").eq("id", mia.business_id).maybeSingle();
+    const id = (viejo as { accent: unknown } | null)?.accent;
+    marcaDb = SUGERENCIAS.find((x) => x.id === id)?.marca ?? null;
+  }
   const marca = marcaFila as { slug: string | null; logo_version: number } | null;
   const fila = b as { name: string; plan: PlanNegocio; setup_completed_at: string | null } | null;
   const modulos = ((mods as { module: ModuloNegocio; enabled: boolean }[]) ?? []).filter((m) => m.enabled).map((m) => m.module);
   return {
     equipo: filas.filter((m) => m.business_id === mia.business_id),
-    acento: esAcento(acentoDb) ? acentoDb : null,
+    marca: marcaDb,
     negocio: {
       nombre: fila?.name ?? "",
       plan: fila?.plan ?? "BASICO",

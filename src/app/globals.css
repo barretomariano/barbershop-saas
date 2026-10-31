@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
-/* Sistema visual: oscuro por defecto (referencia fintech), claro opcional.
-   El color de énfasis (--acento, --tinta-acento, --par) lo pone el negocio y se aplica sobre <html>. */
+/* Sistema visual: claro cálido por defecto, oscuro AMOLED y automático (según el celular).
+   Los colores de marca (--acento, --acento-vivo, --par, --tinta-acento, --sobre-vivo...) los calcula src/lib/tema.ts y se aplican sobre <html>. */
 /* Claro cálido (arena) por defecto; oscuro opcional por dispositivo. Superficies de vidrio: translúcidas con brillo
    en el borde superior y sombra suave. --acento-vivo es solo decorativo (esferas, anillos); --acento se usa en texto. */
 :root {
@@ -22,6 +22,10 @@
   --acento-vivo: #ff7a3d;
   --tinta-acento: #ffffff;
   --par: #3e63ff;
+  --par-vivo: #3e63ff;
+  --sobre-vivo: #140f0b;
+  --sobre-par: #ffffff;
+  --fondo-claro: linear-gradient(168deg, #f0d5c4 0%, #efe6db 46%, #efdcce 100%);
   --sombra: 0 22px 44px -26px rgba(90, 55, 25, 0.45), 0 2px 6px -2px rgba(90, 55, 25, 0.1);
   --sombra-chica: 0 10px 22px -14px rgba(90, 55, 25, 0.45);
   --fuente: "Instrument Sans Variable", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -30,11 +34,11 @@
 }
 
 :root[data-tema="oscuro"] {
-  --fondo: #0d0c0c;
+  --fondo: #000000;
   --sup: rgba(255, 255, 255, 0.06);
   --sup-2: rgba(255, 255, 255, 0.07);
   --sup-3: rgba(255, 255, 255, 0.14);
-  --sup-solida: #1a1918;
+  --sup-solida: #121211;
   --linea: rgba(255, 255, 255, 0.09);
   --brillo: rgba(255, 255, 255, 0.16);
   --texto: #f4f2ee;
@@ -60,16 +64,13 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Fondo ambiental en una capa fija: las tarjetas de vidrio lo atraviesan y toman su color al desplazarse. */
+/* Fondo: en claro, el arena de la app fundido en degradado con el color principal de la barbería (suavizado, ver
+   FUSION_CLARO en tema.ts). En oscuro, negro AMOLED puro: sin degradados, los píxeles apagados ahorran batería. */
 body::before {
   content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
-  background:
-    radial-gradient(70% 38% at 100% 0%, color-mix(in srgb, var(--acento-vivo) 30%, transparent), transparent 70%),
-    radial-gradient(60% 30% at 0% 22%, rgba(255, 255, 255, 0.55), transparent 70%),
-    radial-gradient(55% 28% at 100% 58%, color-mix(in srgb, var(--par) 14%, transparent), transparent 72%),
-    radial-gradient(80% 40% at 50% 105%, color-mix(in srgb, var(--acento-vivo) 20%, transparent), transparent 70%),
-    var(--fondo);
+  background: var(--fondo-claro, var(--fondo));
 }
+:root[data-tema="oscuro"] body::before { background: #000; }
 
 .texto-suave { color: var(--suave); }
 .text-red-600 { color: var(--peligro); }

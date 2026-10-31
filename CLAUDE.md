@@ -30,7 +30,7 @@ Next.js + TypeScript (App Router), Tailwind, shadcn/ui, Supabase (Postgres, Auth
 - Inicio muestra solo lo del día a día (siempre HOY, sin selector de período). Resumen > Panorama es el tablero con selector de período. Ambos usan `Tablero.tsx` y `src/lib/widgets.ts`: widgets FIJOS (siempre visibles) y OPCIONALES (se suman desde "Más widgets", al final). Todo widget es clickeable y lleva a su detalle.
 - Formularios y altas van en modales (`Hoja`, `Campo`, `Fichas`, `PieHoja` de `components/ui.tsx`), nunca en línea debajo de una lista.
 - Agenda muestra también las ventas sueltas del día (las de turnos cobrados no se repiten) y permite editar turnos programados (migración 10, `update_appointment`).
-- Estilo: tokens CSS en `globals.css` (oscuro por defecto, claro opcional por dispositivo). El dueño elige un color de énfasis de una paleta cerrada (`src/lib/tema.ts`, guardado en `businesses.accent`, migración 9). No usar colores sueltos ni emojis en la interfaz; usar `var(--acento)` y los íconos de `components/ui.tsx`.
+- Estilo: tokens CSS en `globals.css` (oscuro por defecto, claro opcional por dispositivo). Cada barbería elige DOS colores libres (principal y secundario) en el setup (paso 1) y en Ajustes > Apariencia; se guardan en `businesses.primary_color/secondary_color` (migración 13; `accent` de la migración 9 queda sin uso). `src/lib/tema.ts` calcula las variables CSS y garantiza contraste con cualquier color. No usar colores sueltos ni emojis; usar solo las variables: `--acento-vivo` + `--sobre-vivo` (relleno sólido del principal y su texto), `--acento` (principal como texto), `--par-vivo` + `--sobre-par` y `--par` (secundario como relleno / trazo), `--tinta` (cápsulas y botones oscuros) y los íconos de `components/ui.tsx`.
 - Tipografías propias (Instrument Sans y Bricolage Grotesque) autoalojadas con fontsource: no depender de Google Fonts.
 
 ## Etapa actual
@@ -48,3 +48,9 @@ Pendiente: sucursales y permisos configurables (plan Avanzado) y restricciones p
 - Código: `src/lib/demo/datos.ts` (datos) y `src/lib/demo/cliente.ts` (imita lo que la app usa de Supabase: from/select/filtros, rpc, auth, storage). Se conecta en `src/lib/supabase.ts` (`modoDemo()`).
 - Solo se activa fuera de producción (`next dev`) o con `NEXT_PUBLIC_MODO_DEMO=1`. En producción real (variables cargadas, `.env.production`) nunca se activa. `.env.production` NO se lee en `next dev`; por eso Modeinspect no veía las variables.
 - Si se agrega una función `rpc` o una tabla nueva que las pantallas lean, hay que sumarla también al cliente demo (si no, la pantalla se ve vacía en la demo); `src/lib/demo/cliente.test.ts` cubre lo principal.
+
+## Rediseño por etapas (31 oct 2026, referencia: tablero fintech con cápsulas)
+- Tema: Claro (arena fundida en degradado con el color principal, `--fondo-claro`), Oscuro (negro AMOLED #000, sin degradados) o Automático (sigue al celular). Preferencia por dispositivo en `barberia.tema`.
+- Etapa 1 (hecha): colores libres + motor de temas + AMOLED. Pendiente de Maro: aplicar la migración 13 en Supabase. Verificado: tipos, lint, 163 tests, build; NO visto en navegador.
+- Siguientes: 2) componentes (cápsulas sólidas 1-2 por pantalla, selector de período, gráficos reutilizables, sin grano en tarjetas) 3) Inicio y Resumen 4) vistas por rol (barbero/dueño, mapa de calor día×hora, recurrencia) 5) resto de pantallas.
+- Regla de uso del color (como la referencia): el principal marca lo importante (cápsula héroe, metas, línea/área del gráfico, opción activa); el secundario es la segunda serie de los gráficos y detalles; la cápsula "neta" y los botones son de tinta oscura.

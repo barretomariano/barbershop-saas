@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { getSupabase } from "@/lib/supabase";
 import type { DatosNegocio, Membresia } from "@/lib/tipos";
 import { subAjustesDisponibles, type SubAjustes } from "@/lib/navegacion";
-import type { IdAcento, Tema } from "@/lib/tema";
+import type { Marca, PrefTema } from "@/lib/tema";
 import { Icono, Volver, type NombreIcono } from "@/components/ui";
 import { Comisiones, Servicios } from "@/components/Ajustes";
 import { Horarios, Metas, Modulos } from "@/components/AjustesNegocio";
@@ -16,7 +16,7 @@ import MiMarca from "@/components/MiMarca";
 
 interface Props {
   yo: Membresia; equipo: Membresia[]; negocio: DatosNegocio; sub: SubAjustes | null; onSub: (s: SubAjustes | null) => void; onCambio: () => void;
-  tema: Tema; acento: IdAcento; onTema: (t: Tema) => void; onAcento: (a: IdAcento) => void;
+  pref: PrefTema; marca: Marca; onPref: (t: PrefTema) => void; onMarca: (m: Marca) => void;
 }
 
 const FICHA: Record<SubAjustes, { titulo: string; detalle: string; icono: NombreIcono }> = {
@@ -28,7 +28,7 @@ const FICHA: Record<SubAjustes, { titulo: string; detalle: string; icono: Nombre
   horarios: { titulo: "Horarios de trabajo", detalle: "Días y horas de la agenda", icono: "horarios" },
   metas: { titulo: "Metas del mes", detalle: "Objetivos de ventas", icono: "metas" },
   modulos: { titulo: "Módulos", detalle: "Encender o apagar Agenda y Clientes", icono: "modulos" },
-  apariencia: { titulo: "Apariencia", detalle: "Tema y color de tu barbería", icono: "apariencia" },
+  apariencia: { titulo: "Apariencia", detalle: "Tema y colores de tu barbería", icono: "apariencia" },
   historial: { titulo: "Historial de cambios", detalle: "Quién cambió qué y cuándo", icono: "historial" },
 };
 
@@ -37,7 +37,7 @@ const GRUPOS: { titulo: string; items: SubAjustes[] }[] = [
   { titulo: "App", items: ["modulos", "apariencia", "historial"] },
 ];
 
-export default function AjustesHub({ yo, equipo, negocio, sub, onSub, onCambio, tema, acento, onTema, onAcento }: Props) {
+export default function AjustesHub({ yo, equipo, negocio, sub, onSub, onCambio, pref, marca, onPref, onMarca }: Props) {
   const disponibles = subAjustesDisponibles(yo.role, negocio.modulos);
   const abierta = sub && disponibles.includes(sub) ? sub : null;
   const hayAgenda = negocio.modulos.includes("AGENDA");
@@ -54,7 +54,7 @@ export default function AjustesHub({ yo, equipo, negocio, sub, onSub, onCambio, 
     if (abierta === "metas") contenido = <Metas yo={yo} equipo={equipo} />;
     if (abierta === "modulos") contenido = <Modulos yo={yo} negocio={negocio} onCambio={onCambio} />;
     if (abierta === "historial") contenido = <Auditoria yo={yo} equipo={equipo} />;
-    if (abierta === "apariencia") contenido = <Apariencia yo={yo} tema={tema} acento={acento} onTema={onTema} onAcento={onAcento} />;
+    if (abierta === "apariencia") contenido = <Apariencia yo={yo} pref={pref} marca={marca} onPref={onPref} onMarca={onMarca} />;
     return (
       <div className="flex flex-col gap-5">
         <Volver texto="Ajustes" onClick={() => onSub(null)} />
