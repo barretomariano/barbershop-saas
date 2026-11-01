@@ -624,3 +624,25 @@ select.campo { background-position: right 20px center; padding-right: 46px; }
 .calor-celda { aspect-ratio: 1; border-radius: 6px; min-width: 0; }
 .calor-celda[data-activa="true"] { outline: 2px solid var(--texto); outline-offset: 1px; }
 .calor-hora { font-size: 10px; color: var(--suave); text-align: center; }
+
+
+/* ---------- Agenda: calendario con carga por día, selector de mes/año y filtro por barbero ---------- */
+.celda-dia[data-nivel="1"] { background: color-mix(in srgb, var(--acento-vivo) 12%, var(--sup-2)); }
+.celda-dia[data-nivel="2"] { background: color-mix(in srgb, var(--acento-vivo) 24%, var(--sup-2)); }
+.celda-dia[data-nivel="3"] { background: color-mix(in srgb, var(--acento-vivo) 36%, var(--sup-2)); }
+.celda-dia[data-nivel="4"] { background: color-mix(in srgb, var(--acento-vivo) 48%, var(--sup-2)); font-weight: 700; }
+.celda-dia[aria-pressed="true"] { background: var(--tinta); color: var(--sobre-tinta); }
+.leyenda-nivel { display: inline-block; width: 14px; height: 14px; border-radius: 5px; }
+.leyenda-nivel[data-nivel="1"] { background: color-mix(in srgb, var(--acento-vivo) 12%, var(--sup-2)); }
+.leyenda-nivel[data-nivel="2"] { background: color-mix(in srgb, var(--acento-vivo) 24%, var(--sup-2)); }
+.leyenda-nivel[data-nivel="3"] { background: color-mix(in srgb, var(--acento-vivo) 36%, var(--sup-2)); }
+.leyenda-nivel[data-nivel="4"] { background: color-mix(in srgb, var(--acento-vivo) 48%, var(--sup-2)); }
+.chip-titulo { min-height: 44px; padding: 0 14px; border-radius: 999px; font-family: var(--fuente-titulo); font-size: 18px; font-weight: 600; }
+.chip-titulo[aria-expanded="true"] { background: var(--tinta); color: var(--sobre-tinta); }
+.selector-grilla { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.selector-grilla .chip { justify-content: center; min-height: 48px; }
+.filtro-barberos { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+.filtro-barberos::-webkit-scrollbar { display: none; }
+.filtro-barberos .chip { flex: none; display: inline-flex; align-items: center; gap: 8px; }
+.cuenta { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 99px; font-size: 12px; font-weight: 700; background: var(--sup-3); }
+.chip[aria-pressed="true"] .cuenta { background: var(--acento-vivo); color: var(--sobre-vivo); }

@@ -48,3 +48,35 @@ export function fechaAR(iso: string): string {
 export function numeroDelDia(fecha: string): number {
   return Number(fecha.slice(8, 10));
 }
+
+export const MESES_CORTO = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+export function anioDe(mes: string): number {
+  return Number(mes.slice(0, 4));
+}
+
+// "2026-10" + año 2027 -> "2027-10"; "2026-10" + mes 3 (marzo, 1 a 12) -> "2026-03".
+export function conAnio(mes: string, anio: number): string {
+  return `${anio}-${mes.slice(5, 7)}`;
+}
+export function conMes(mes: string, numeroMes: number): string {
+  return `${mes.slice(0, 4)}-${String(numeroMes).padStart(2, "0")}`;
+}
+
+// Los 12 años que muestra el selector de año, arrancando 4 años antes del que se está mirando.
+export function ventanaAnios(anio: number, desplazamiento = 0): number[] {
+  const base = anio - 4 + desplazamiento * 12;
+  return Array.from({ length: 12 }, (_, i) => base + i);
+}
+
+// Qué tan cargado está un día: 0 (nada) a 4 (el más agendado del mes). El tope mínimo evita que un día con
+// 2 turnos parezca "lleno" en una barbería tranquila.
+export function nivelCarga(cantidad: number, maximo: number): 0 | 1 | 2 | 3 | 4 {
+  if (cantidad <= 0) return 0;
+  const r = cantidad / Math.max(maximo, 1);
+  return r <= 0.25 ? 1 : r <= 0.5 ? 2 : r <= 0.75 ? 3 : 4;
+}
+
+export function maximoDelMes(conteo: Map<string, number>, minimo = 6): number {
+  return Math.max(minimo, ...conteo.values());
+}

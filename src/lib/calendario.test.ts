@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { celdasDelMes, diasDelMesDe, fechaAR, nombreMes, rangoMes, sumarMeses } from "./calendario";
+import { anioDe, celdasDelMes, conAnio, conMes, maximoDelMes, nivelCarga, ventanaAnios, diasDelMesDe, fechaAR, nombreMes, rangoMes, sumarMeses } from "./calendario";
 
 describe("calendario", () => {
   it("suma meses cruzando el año", () => {
@@ -36,5 +36,34 @@ describe("calendario", () => {
 
   it("nombra el mes en español", () => {
     expect(nombreMes("2026-10")).toBe("octubre de 2026");
+  });
+});
+
+describe("selector de mes y año", () => {
+  it("cambia el año o el mes sin tocar lo demás", () => {
+    expect(anioDe("2026-10")).toBe(2026);
+    expect(conAnio("2026-10", 2027)).toBe("2027-10");
+    expect(conMes("2026-10", 3)).toBe("2026-03");
+    expect(conMes("2026-10", 12)).toBe("2026-12");
+  });
+  it("la ventana de años trae 12 y se desplaza de a 12", () => {
+    expect(ventanaAnios(2026)).toEqual([2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033]);
+    expect(ventanaAnios(2026, 1)[0]).toBe(2034);
+    expect(ventanaAnios(2026, -1)[11]).toBe(2021);
+  });
+});
+
+describe("carga de cada día", () => {
+  it("sin turnos no hay color y el más agendado llega al nivel 4", () => {
+    expect(nivelCarga(0, 10)).toBe(0);
+    expect(nivelCarga(1, 10)).toBe(1);
+    expect(nivelCarga(5, 10)).toBe(2);
+    expect(nivelCarga(7, 10)).toBe(3);
+    expect(nivelCarga(10, 10)).toBe(4);
+  });
+  it("en una barbería tranquila 2 turnos no parecen un día lleno", () => {
+    const conteo = new Map([["2026-10-05", 2], ["2026-10-06", 1]]);
+    expect(maximoDelMes(conteo)).toBe(6);
+    expect(nivelCarga(2, maximoDelMes(conteo))).toBe(2);
   });
 });

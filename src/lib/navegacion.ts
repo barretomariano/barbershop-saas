@@ -60,3 +60,8 @@ export function pestanasVisibles(modulos: ModuloNegocio[]): ItemTab[] {
 export function mostrarBotonVenta(tab: Tab): boolean {
   return tab === "inicio";
 }
+
+// El botón flotante de nuevo turno existe solo en Agenda.
+export function mostrarBotonTurno(tab: Tab): boolean {
+  return tab === "agenda";
+}

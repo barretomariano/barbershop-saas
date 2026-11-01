@@ -8,16 +8,15 @@ import { formatearARS } from "@/lib/dinero";
 import {
   ETIQUETA_ESTADO, esPorCerrar, fechaHoraAIso, fechaLarga, horaCorta, horasDelDia, nombreCliente, sumarDias,
 } from "@/lib/turnos";
-import { celdasDelMes, fechaAR, mesDe, nombreMes, numeroDelDia, rangoMes, sumarMeses } from "@/lib/calendario";
+import { anioDe, celdasDelMes, conAnio, conMes, fechaAR, maximoDelMes, mesDe, MESES_CORTO, nivelCarga, nombreMes, numeroDelDia, rangoMes, sumarMeses, ventanaAnios } from "@/lib/calendario";
 import { Campo, Cargando, EncabezadoHoja, Fichas, Hoja, Icono, PieHoja, Segmentado } from "@/components/ui";
 import type { TurnoACobrar } from "@/components/VentaModal";
 
-interface Props { yo: Membresia; equipo: Membresia[]; hayClientes: boolean; onCobrar: (t: TurnoACobrar) => void; refresco: number }
+interface Props { yo: Membresia; equipo: Membresia[]; hayClientes: boolean; onCobrar: (t: TurnoACobrar) => void; refresco: number; abrirNuevo: number }
 interface Datos { mes: Turno[]; ventas: Venta[]; porCerrar: Turno[]; servicios: Servicio[]; clientes: Cliente[] }
 type Item = { k: "turno"; t: Turno; at: number } | { k: "venta"; v: Venta; at: number };
 type Modal = { modo: "nuevo" } | { modo: "editar"; t: Turno } | { modo: "cerrar" } | null;
 const DURACIONES = [15, 30, 45, 60, 75, 90, 105, 120, 150, 180];
-type Vista = "dia" | "calendario";
 
 const TURNO = "*, clients(name,phone)";
 
@@ -50,73 +49,102 @@ async function cargar(yo: Membresia, mes: string, hayClientes: boolean): Promise
   };
 }
 
-export default function Agenda({ yo, equipo, hayClientes, onCobrar, refresco }: Props) {
-  const [vista, setVista] = useState<Vista>("dia");
-  const [fecha, setFecha] = useState(hoyAR());
-  const [mesVista, setMesVista] = useState(mesDe(hoyAR()));
+export default function Agenda({ yo, equipo, hayClientes, onCobrar, refresco, abrirNuevo }: Props) {
+  const hoy = hoyAR();
+  const [fecha, setFecha] = useState(hoy);
+  const [mesVista, setMesVista] = useState(mesDe(hoy));
+  const [filtro, setFiltro] = useState<string | null>(null); // dueño/encargado: un barbero; null = todos
+  const [agrupar, setAgrupar] = useState<"barbero" | "hora">("barbero");
   const [datos, setDatos] = useState<Datos | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [modal, setModal] = useState<Modal>(null);
   const [version, setVersion] = useState(0);
   const recargar = useCallback(() => setVersion((v) => v + 1), []);
-  const mes = vista === "calendario" ? mesVista : mesDe(fecha);
+
+  // El botón flotante "Turno" vive en la pantalla principal: cada toque suma 1 y acá se abre el formulario.
+  const [visto, setVisto] = useState(abrirNuevo);
+  if (abrirNuevo !== visto) { setVisto(abrirNuevo); setModal({ modo: "nuevo" }); }
 
   useEffect(() => {
     let vivo = true;
-    void cargar(yo, mes, hayClientes).then((r) => {
+    void cargar(yo, mesVista, hayClientes).then((r) => {
       if (!vivo) return;
       setError(r.error ? "No se pudo cargar la agenda." : null);
       setDatos(r);
     });
     return () => { vivo = false; };
-  }, [yo, mes, hayClientes, version, refresco]);
+  }, [yo, mesVista, hayClientes, version, refresco]);
 
   const gestion = yo.role !== "BARBER";
   const nombre = (id: string) => equipo.find((m) => m.id === id)?.display_name ?? "—";
+  const barberoActivo = gestion ? filtro : null;
 
   // Los turnos cobrados ya tienen su venta: esa venta no se repite como renglón aparte.
-  const { turnosPorDia, ventasPorDia } = useMemo(() => {
+  const { turnosPorDia, ventasPorDia, deTodos } = useMemo(() => {
     const t = new Map<string, Turno[]>();
     const v = new Map<string, Venta[]>();
+    const todos = new Map<string, Turno[]>();
     const conTurno = new Set((datos?.mes ?? []).map((x) => x.sale_id).filter(Boolean));
-    for (const x of datos?.mes ?? []) { const k = fechaAR(x.starts_at); t.set(k, [...(t.get(k) ?? []), x]); }
+    for (const x of datos?.mes ?? []) {
+      const k = fechaAR(x.starts_at);
+      todos.set(k, [...(todos.get(k) ?? []), x]);
+      if (barberoActivo && x.barber_membership_id !== barberoActivo) continue;
+      t.set(k, [...(t.get(k) ?? []), x]);
+    }
     for (const x of datos?.ventas ?? []) {
       if (conTurno.has(x.id)) continue;
+      if (barberoActivo && x.barber_membership_id !== barberoActivo) continue;
       const k = fechaAR(x.sold_at);
       v.set(k, [...(v.get(k) ?? []), x]);
     }
-    return { turnosPorDia: t, ventasPorDia: v };
-  }, [datos]);
+    return { turnosPorDia: t, ventasPorDia: v, deTodos: todos };
+  }, [datos, barberoActivo]);
 
   if (!datos) return <Cargando />;
 
+  const activo = (t: Turno) => t.status !== "CANCELED" && t.status !== "NO_SHOW";
   const delDia = turnosPorDia.get(fecha) ?? [];
-  const activos = delDia.filter((t) => t.status !== "CANCELED" && t.status !== "NO_SHOW");
-  const otros = delDia.filter((t) => t.status === "CANCELED" || t.status === "NO_SHOW");
+  const activos = delDia.filter(activo);
+  const otros = delDia.filter((t) => !activo(t));
   const items: Item[] = [
     ...activos.map((t): Item => ({ k: "turno", t, at: new Date(t.starts_at).getTime() })),
     ...(ventasPorDia.get(fecha) ?? []).map((v): Item => ({ k: "venta", v, at: new Date(v.sold_at).getTime() })),
   ].sort((a, b) => a.at - b.at);
+  const idBarbero = (it: Item) => (it.k === "turno" ? it.t.barber_membership_id : it.v.barber_membership_id);
+  const cobrados = activos.filter((t) => t.status === "PAID").length;
+  const porCobrar = activos.filter((t) => esPorCerrar(t)).length;
+
+  // Calendario: un número por día (turnos activos) para pintar cuán agendado está.
+  const conteo = new Map<string, number>();
+  const pendientes = new Map<string, number>();
+  for (const [dia, ts] of turnosPorDia) {
+    const act = ts.filter(activo);
+    conteo.set(dia, act.length);
+    pendientes.set(dia, act.filter((t) => esPorCerrar(t)).length);
+  }
+  const turnosDelDiaDe = (id: string) => (deTodos.get(fecha) ?? []).filter((t) => activo(t) && t.barber_membership_id === id).length;
+
+  function elegirDia(d: string) { setFecha(d); setMesVista(mesDe(d)); }
+  function elegirMes(m: string) { setMesVista(m); setFecha(m === mesDe(hoy) ? hoy : `${m}-01`); }
 
   function cobrar(t: Turno) {
     const s = datos?.servicios.find((x) => x.id === t.service_id);
     onCobrar({ id: t.id, cliente: nombreCliente(t), servicio: t.service_name ?? null, precio: s?.default_price ?? null, barbero: nombre(t.barber_membership_id) });
   }
   const tarjeta = (t: Turno, conFecha = false) => (
-    <TarjetaTurno key={t.id} t={t} gestion={gestion} nombre={nombre} onCobrar={() => cobrar(t)} onEditar={() => setModal({ modo: "editar", t })}
+    <TarjetaTurno key={t.id} t={t} gestion={gestion && !barberoActivo} nombre={nombre} onCobrar={() => cobrar(t)} onEditar={() => setModal({ modo: "editar", t })}
       onCambio={recargar} onError={setError} conFecha={conFecha} />
   );
+  const renderItem = (it: Item) => it.k === "turno" ? tarjeta(it.t) : <FilaVenta key={it.v.id} v={it.v} gestion={gestion && !barberoActivo} nombre={nombre} />;
+
+  // Dueño viendo a todos: el día se parte por barbero (o en una sola lista por hora, a elección).
+  const porBarbero = gestion && !barberoActivo && agrupar === "barbero";
+  const grupos = porBarbero
+    ? equipo.map((m) => ({ m, its: items.filter((it) => idBarbero(it) === m.id) })).filter((g) => g.its.length > 0)
+    : [];
 
   return (
     <section className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
-        <Segmentado etiqueta="Vista de la agenda" valor={vista} onCambio={(v) => { setVista(v); if (v === "calendario") setMesVista(mesDe(fecha)); }}
-          opciones={[{ valor: "dia", texto: "Día" }, { valor: "calendario", texto: "Calendario" }]} />
-        <button className="boton-chico inline-flex items-center gap-1" style={{ minHeight: 46, borderRadius: 18 }} onClick={() => setModal({ modo: "nuevo" })}>
-          <Icono nombre="mas" tam={18} /> Turno
-        </button>
-      </div>
-
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
 
       {datos.porCerrar.length > 0 && (
@@ -129,29 +157,49 @@ export default function Agenda({ yo, equipo, hayClientes, onCobrar, refresco }: 
         </button>
       )}
 
-      {vista === "calendario" ? (
-        <Calendario mes={mesVista} fecha={fecha} turnosPorDia={turnosPorDia} ventasPorDia={ventasPorDia}
-          onMes={(n) => setMesVista(sumarMeses(mesVista, n))} onDia={(d) => setFecha(d)} />
-      ) : (
-        <div className="flex items-center justify-between gap-2">
-          <button className="chip" style={{ width: 46, padding: 0 }} aria-label="Día anterior" onClick={() => setFecha(sumarDias(fecha, -1))}><Icono nombre="volver" tam={18} /></button>
-          <div className="text-center">
-            <p className="titulo text-lg font-semibold capitalize">{fechaLarga(fecha)}</p>
-            {fecha !== hoyAR() && <button className="text-xs font-semibold underline" onClick={() => setFecha(hoyAR())}>Volver a hoy</button>}
+      {gestion && equipo.length > 1 && (
+        <div className="flex flex-col gap-2">
+          <p className="campo-etiqueta">Ver agenda de</p>
+          <div className="filtro-barberos" role="group" aria-label="Barbero">
+            <button className="chip" aria-pressed={!filtro} onClick={() => setFiltro(null)}>Todos <span className="cuenta">{(deTodos.get(fecha) ?? []).filter(activo).length}</span></button>
+            {equipo.map((m) => (
+              <button key={m.id} className="chip" aria-pressed={filtro === m.id} onClick={() => setFiltro(filtro === m.id ? null : m.id)}>
+                {m.display_name.split(" ")[0]} <span className="cuenta">{turnosDelDiaDe(m.id)}</span>
+              </button>
+            ))}
           </div>
-          <button className="chip" style={{ width: 46, padding: 0 }} aria-label="Día siguiente" onClick={() => setFecha(sumarDias(fecha, 1))}><Icono nombre="siguiente" tam={18} /></button>
         </div>
       )}
 
-      {vista === "calendario" && (
-        <div className="flex items-center justify-between">
+      <Calendario mes={mesVista} fecha={fecha} hoy={hoy} conteo={conteo} pendientes={pendientes} ventasPorDia={ventasPorDia}
+        onMes={elegirMes} onDia={elegirDia} />
+
+      <div className="flex items-center justify-between gap-2">
+        <button className="chip" style={{ width: 46, padding: 0 }} aria-label="Día anterior" onClick={() => elegirDia(sumarDias(fecha, -1))}><Icono nombre="volver" tam={18} /></button>
+        <div className="text-center">
           <p className="titulo text-lg font-semibold capitalize">{fechaLarga(fecha)}</p>
-          <button className="text-sm font-semibold underline" onClick={() => setVista("dia")}>Ver día completo</button>
+          <p className="texto-suave text-xs">
+            {activos.length === 0 ? "Sin turnos" : `${activos.length} ${activos.length === 1 ? "turno" : "turnos"}`}
+            {cobrados > 0 ? ` · ${cobrados} cobrados` : ""}{porCobrar > 0 ? ` · ${porCobrar} por cobrar` : ""}
+            {barberoActivo ? ` · ${nombre(barberoActivo)}` : ""}
+          </p>
+          {fecha !== hoy && <button className="text-xs font-semibold underline" onClick={() => elegirDia(hoy)}>Volver a hoy</button>}
         </div>
+        <button className="chip" style={{ width: 46, padding: 0 }} aria-label="Día siguiente" onClick={() => elegirDia(sumarDias(fecha, 1))}><Icono nombre="siguiente" tam={18} /></button>
+      </div>
+
+      {gestion && !barberoActivo && items.length > 1 && (
+        <Segmentado etiqueta="Cómo ordenar el día" valor={agrupar} onCambio={setAgrupar}
+          opciones={[{ valor: "barbero", texto: "Por barbero" }, { valor: "hora", texto: "Por hora" }]} />
       )}
 
       {items.length === 0 && <p className="texto-suave text-sm">No hay turnos ni ventas este día.</p>}
-      {items.map((it) => it.k === "turno" ? tarjeta(it.t) : <FilaVenta key={it.v.id} v={it.v} gestion={gestion} nombre={nombre} />)}
+      {porBarbero ? grupos.map((g) => (
+        <div key={g.m.id} className="flex flex-col gap-3">
+          <p className="titulo-tarjeta flex items-center gap-2"><span className="avatar" style={{ width: 28, height: 28, fontSize: 12 }}>{g.m.display_name.slice(0, 1).toUpperCase()}</span>{g.m.display_name} · {g.its.length}</p>
+          {g.its.map(renderItem)}
+        </div>
+      )) : items.map(renderItem)}
 
       {otros.length > 0 && (
         <details>
@@ -165,7 +213,7 @@ export default function Agenda({ yo, equipo, hayClientes, onCobrar, refresco }: 
       {(modal?.modo === "nuevo" || modal?.modo === "editar") && (
         <Hoja titulo={modal.modo === "nuevo" ? "Nuevo turno" : "Editar turno"} onCerrar={() => setModal(null)}>
           <FormTurno yo={yo} equipo={equipo} fecha={fecha} servicios={datos.servicios} clientes={datos.clientes} hayClientes={hayClientes}
-            turno={modal.modo === "editar" ? modal.t : null} onCerrar={() => setModal(null)} onListo={() => { setModal(null); recargar(); }} />
+            barberoInicial={barberoActivo} turno={modal.modo === "editar" ? modal.t : null} onCerrar={() => setModal(null)} onListo={() => { setModal(null); recargar(); }} />
         </Hoja>
       )}
 
@@ -195,41 +243,82 @@ function FilaVenta({ v, gestion, nombre }: { v: Venta; gestion: boolean; nombre:
   );
 }
 
-function Calendario({ mes, fecha, turnosPorDia, ventasPorDia, onMes, onDia }: {
-  mes: string; fecha: string; turnosPorDia: Map<string, Turno[]>; ventasPorDia: Map<string, Venta[]>; onMes: (n: number) => void; onDia: (d: string) => void;
+// Calendario del mes. El mes y el año se tocan para cambiarlos; cada día se pinta según cuán agendado está.
+function Calendario({ mes, fecha, hoy, conteo, pendientes, ventasPorDia, onMes, onDia }: {
+  mes: string; fecha: string; hoy: string; conteo: Map<string, number>; pendientes: Map<string, number>; ventasPorDia: Map<string, Venta[]>; onMes: (m: string) => void; onDia: (d: string) => void;
 }) {
-  const hoy = hoyAR();
+  const [panel, setPanel] = useState<"mes" | "anio" | null>(null);
+  const [desplazamiento, setDesplazamiento] = useState(0);
+  const maximo = maximoDelMes(conteo);
+  const [nombreSolo] = nombreMes(mes).split(" de ");
+  const anio = anioDe(mes);
+  const alternar = (p: "mes" | "anio") => { setPanel(panel === p ? null : p); setDesplazamiento(0); };
+
   return (
     <div className="tarjeta flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <button className="chip" style={{ width: 44, padding: 0 }} aria-label="Mes anterior" onClick={() => onMes(-1)}><Icono nombre="volver" tam={18} /></button>
-        <p className="titulo text-lg font-semibold capitalize">{nombreMes(mes)}</p>
-        <button className="chip" style={{ width: 44, padding: 0 }} aria-label="Mes siguiente" onClick={() => onMes(1)}><Icono nombre="siguiente" tam={18} /></button>
+      <div className="flex items-center justify-between gap-2">
+        <button className="chip" style={{ width: 44, padding: 0 }} aria-label="Mes anterior" onClick={() => { setPanel(null); onMes(sumarMeses(mes, -1)); }}><Icono nombre="volver" tam={18} /></button>
+        <div className="flex items-center gap-1">
+          <button className="chip-titulo capitalize" aria-expanded={panel === "mes"} onClick={() => alternar("mes")}>{nombreSolo}</button>
+          <button className="chip-titulo" aria-expanded={panel === "anio"} onClick={() => alternar("anio")}>{anio}</button>
+        </div>
+        <button className="chip" style={{ width: 44, padding: 0 }} aria-label="Mes siguiente" onClick={() => { setPanel(null); onMes(sumarMeses(mes, 1)); }}><Icono nombre="siguiente" tam={18} /></button>
       </div>
-      <div className="rejilla-semana" aria-hidden="true">
-        {["L", "M", "M", "J", "V", "S", "D"].map((d, i) => <span key={i} className="cabeza-dia">{d}</span>)}
-      </div>
-      <div className="rejilla-mes">
-        {celdasDelMes(mes).map((d, i) => {
-          if (!d) return <span key={`v${i}`} className="celda-dia" data-vacia="true" />;
-          const turnos = (turnosPorDia.get(d) ?? []).filter((t) => t.status !== "CANCELED" && t.status !== "NO_SHOW");
-          const ventas = ventasPorDia.get(d) ?? [];
-          const pendientes = turnos.filter((t) => esPorCerrar(t)).length;
-          const total = turnos.length + ventas.length;
-          return (
-            <button key={d} className="celda-dia" data-hoy={d === hoy} aria-pressed={d === fecha}
-              aria-label={`${numeroDelDia(d)}: ${total === 0 ? "sin movimientos" : `${turnos.length} turnos y ${ventas.length} ventas`}`}
-              onClick={() => onDia(d)}>
-              <span>{numeroDelDia(d)}</span>
-              <span className="puntos">
-                {turnos.slice(0, 3).map((t, j) => <span key={j} className="punto" data-tipo={esPorCerrar(t) && pendientes > 0 ? "pendiente" : "normal"} />)}
-                {turnos.length < 3 && ventas.length > 0 && <span className="punto" data-tipo="venta" />}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-      <p className="texto-suave text-xs">Tocá un día para ver su detalle. Punto rojo: por cobrar o cerrar · punto tenue: ventas sueltas.</p>
+
+      {panel === "mes" && (
+        <div className="selector-grilla" role="group" aria-label="Elegir mes">
+          {MESES_CORTO.map((nombre, i) => (
+            <button key={nombre} className="chip" aria-pressed={mes === conMes(mes, i + 1)} onClick={() => { setPanel(null); onMes(conMes(mes, i + 1)); }}>{nombre}</button>
+          ))}
+        </div>
+      )}
+
+      {panel === "anio" && (
+        <div className="flex flex-col gap-2">
+          <div className="selector-grilla" role="group" aria-label="Elegir año">
+            {ventanaAnios(anio, desplazamiento).map((a) => (
+              <button key={a} className="chip" aria-pressed={a === anio} onClick={() => { setPanel(null); onMes(conAnio(mes, a)); }}>{a}</button>
+            ))}
+          </div>
+          <div className="flex justify-between">
+            <button className="text-sm font-semibold underline" onClick={() => setDesplazamiento(desplazamiento - 1)}>Años anteriores</button>
+            <button className="text-sm font-semibold underline" onClick={() => setDesplazamiento(desplazamiento + 1)}>Años siguientes</button>
+          </div>
+        </div>
+      )}
+
+      {panel === null && (
+        <>
+          <div className="rejilla-semana" aria-hidden="true">
+            {["L", "M", "M", "J", "V", "S", "D"].map((d, i) => <span key={i} className="cabeza-dia">{d}</span>)}
+          </div>
+          <div className="rejilla-mes">
+            {celdasDelMes(mes).map((d, i) => {
+              if (!d) return <span key={`v${i}`} className="celda-dia" data-vacia="true" />;
+              const turnos = conteo.get(d) ?? 0;
+              const ventas = (ventasPorDia.get(d) ?? []).length;
+              const porCerrar = pendientes.get(d) ?? 0;
+              return (
+                <button key={d} className="celda-dia" data-hoy={d === hoy} data-nivel={nivelCarga(turnos, maximo)} aria-pressed={d === fecha}
+                  aria-label={`${numeroDelDia(d)}: ${turnos === 0 && ventas === 0 ? "sin movimientos" : `${turnos} turnos${ventas ? ` y ${ventas} ventas` : ""}`}`}
+                  onClick={() => onDia(d)}>
+                  <span>{numeroDelDia(d)}</span>
+                  <span className="puntos">
+                    {porCerrar > 0 && <span className="punto" data-tipo="pendiente" />}
+                    {turnos > 0 && ventas > 0 && <span className="punto" data-tipo="venta" />}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex items-center justify-between text-xs" style={{ color: "var(--suave)" }}>
+            <span className="flex items-center gap-1.5">Pocos
+              {[1, 2, 3, 4].map((n) => <i key={n} className="leyenda-nivel" data-nivel={n} />)}
+              Muchos turnos</span>
+            <span className="flex items-center gap-1.5"><i className="punto" data-tipo="pendiente" style={{ display: "inline-block" }} /> por cobrar</span>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -281,13 +370,13 @@ function TarjetaTurno({ t, gestion, nombre, onCobrar, onEditar, onCambio, onErro
 }
 
 // Formulario de turno (crear o editar), pensado para un modal: cada dato en su propio bloque, apilados.
-function FormTurno({ yo, equipo, fecha, servicios, clientes, hayClientes, turno, onCerrar, onListo }: {
-  yo: Membresia; equipo: Membresia[]; fecha: string; servicios: Servicio[]; clientes: Cliente[]; hayClientes: boolean; turno: Turno | null; onCerrar: () => void; onListo: () => void;
+function FormTurno({ yo, equipo, fecha, servicios, clientes, hayClientes, barberoInicial, turno, onCerrar, onListo }: {
+  yo: Membresia; equipo: Membresia[]; fecha: string; servicios: Servicio[]; clientes: Cliente[]; hayClientes: boolean; barberoInicial: string | null; turno: Turno | null; onCerrar: () => void; onListo: () => void;
 }) {
   const editando = turno !== null;
   const gestion = yo.role !== "BARBER";
   const minutosActuales = turno ? Math.round((new Date(turno.ends_at).getTime() - new Date(turno.starts_at).getTime()) / 60000) : 30;
-  const [barbero, setBarbero] = useState(turno?.barber_membership_id ?? yo.id);
+  const [barbero, setBarbero] = useState(turno?.barber_membership_id ?? barberoInicial ?? yo.id);
   const [dia, setDia] = useState(turno ? fechaAR(turno.starts_at) : fecha);
   const [hora, setHora] = useState(turno ? horaCorta(turno.starts_at) : "10:00");
   const [duracion, setDuracion] = useState(minutosActuales);

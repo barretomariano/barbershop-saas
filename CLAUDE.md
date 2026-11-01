@@ -60,3 +60,11 @@ Pendiente: sucursales y permisos configurables (plan Avanzado) y restricciones p
   - Migración 14 (verificada en un Postgres real): `mapa_calor`, `recurrencia_clientes`, `serie_gastos`, `rentabilidad_servicios`; todas `security invoker` (el barbero solo ve lo suyo). El modo demo las implementa en `lib/demo/cliente.ts`.
   - Reportes usa los mismos gráficos. Resumen > Ventas abre con cápsula de color.
 - Verificado: tipos, lint, 187 tests y build. Pendiente: revisión visual en navegador (no hay navegador en el entorno de Claude).
+
+## Agenda, pausa de cuentas y administración (1 nov 2026, migración 15)
+- Agenda: abre en Calendario con el día elegido debajo (sin pestañas Día/Calendario). Tocar el mes o el año abre un selector; cada día se pinta según cuántos turnos tiene (`nivelCarga` en `lib/calendario.ts`, relativo al día más cargado del mes, con tope mínimo de 6). El botón flotante "Turno" vive en `page.tsx` y solo aparece en Agenda (`mostrarBotonTurno`); `Agenda` abre el formulario cuando cambia `abrirNuevo`.
+- Quién ve qué en la agenda (RLS, migración 7): el barbero solo ve sus turnos; dueño y encargado ven todos. Dueño/encargado tienen filtro por barbero (chips con la cuenta del día) y el día se agrupa por barbero o por hora.
+- Pausa por falta de pago (migración 15): `private.admin_pausar/admin_reanudar` apagan y reencienden `memberships.active` (marcando `paused_off`), así toda regla de seguridad existente bloquea el acceso sin tocar datos. La app muestra "Cuenta pausada" usando `public.estado_de_mi_cuenta()` y el botón de WhatsApp de `lib/soporte.ts` (variable `NEXT_PUBLIC_SOPORTE_WHATSAPP`). Alta: `private.admin_alta(nombre, email, nombre_dueño)`. Control: `private.admin_negocios()`. Guía: `docs/administracion.md`.
+- `.github/workflows/mantener-activo.yml` llama a `public.ping()` cada 2 días para que Supabase gratis no se pause.
+- Legal: borradores en `public/terminos.html` y `public/privacidad.html` (con campos [entre corchetes] por completar; aún sin enlazar desde la app) y revisión en `docs/revision-legal.md`.
+- Pruebas SQL: `supabase/tests/*.sql` (11 archivos, 356 verificaciones) contra Postgres 16 real con `00_simular_supabase.sql`; la 15 tiene `rls_pausa_test.sql`.

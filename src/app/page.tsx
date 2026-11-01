@@ -17,7 +17,8 @@ import ResumenHub from "@/components/ResumenHub";
 import AjustesHub from "@/components/AjustesHub";
 import VentaModal, { type TurnoACobrar } from "@/components/VentaModal";
 import { Icono, type NombreIcono } from "@/components/ui";
-import { mostrarBotonVenta, pestanasVisibles, ubicar, type Destino, type SubAjustes, type SubResumen, type Tab } from "@/lib/navegacion";
+import { urlSoporte } from "@/lib/soporte";
+import { mostrarBotonTurno, mostrarBotonVenta, pestanasVisibles, ubicar, type Destino, type SubAjustes, type SubResumen, type Tab } from "@/lib/navegacion";
 import { aplicarApariencia, CLAVE_MARCA, guardarLocal, leerMarcaLocal, leerPrefTema, marcaValida, MARCA_POR_DEFECTO, PREF_TEMA_POR_DEFECTO, serializarMarca, SUGERENCIAS, type Marca, type PrefTema } from "@/lib/tema";
 
 const COLUMNAS = "id,business_id,user_id,role,display_name,active,commission_model,commission_bps,commission_configured,fixed_monthly";
@@ -54,10 +55,12 @@ function App() {
 function Panel({ userId }: { userId: string }) {
   const [equipo, setEquipo] = useState<Membresia[] | null>(null);
   const [negocio, setNegocio] = useState<DatosNegocio | null>(null);
+  const [pausa, setPausa] = useState<string | null>(null); // nombre de la barbería si su cuenta está pausada
   const [tab, setTab] = useState<Tab>("inicio");
   const [subResumen, setSubResumen] = useState<SubResumen>("panorama");
   const [subAjustes, setSubAjustes] = useState<SubAjustes | null>(null);
   const [venta, setVenta] = useState<{ turno: TurnoACobrar | null } | null>(null);
+  const [nuevoTurno, setNuevoTurno] = useState(0); // cada toque del botón flotante "Turno" suma 1
   const [refresco, setRefresco] = useState(0);
   // Panel solo se dibuja después de iniciar sesión (en el navegador), así que se puede leer el dispositivo directo.
   const [pref, setPref] = useState<PrefTema>(() => (typeof window === "undefined" ? PREF_TEMA_POR_DEFECTO : leerPrefTema()));
@@ -106,6 +109,7 @@ function Panel({ userId }: { userId: string }) {
       if (!vivo) return;
       setEquipo(r.equipo);
       setNegocio(r.negocio);
+      setPausa(r.pausa);
       // Los colores del negocio mandan sobre lo guardado en este dispositivo.
       if (r.marca) {
         setMarca(r.marca);
@@ -127,6 +131,7 @@ function Panel({ userId }: { userId: string }) {
 
   if (equipo === null) return <Mensaje texto="Cargando…" />;
   const yo = equipo.find((m) => m.user_id === userId);
+  if (!yo && pausa) return <CuentaPausada nombre={pausa} />;
   if (!yo || !negocio) {
     return (
       <Mensaje texto="Tu usuario todavía no está asignado a ninguna barbería. Pedile al dueño que te agregue.">
@@ -201,7 +206,7 @@ function Panel({ userId }: { userId: string }) {
 
         {activa === "inicio" && <Inicio yo={yo} equipo={equipo} modulos={negocio.modulos} irA={irA} refresco={refresco} />}
         {activa === "agenda" && hayAgenda && (
-          <Agenda yo={yo} equipo={equipo} hayClientes={hayClientes} refresco={refresco} onCobrar={(t) => setVenta({ turno: t })} />
+          <Agenda yo={yo} equipo={equipo} hayClientes={hayClientes} refresco={refresco} abrirNuevo={nuevoTurno} onCobrar={(t) => setVenta({ turno: t })} />
         )}
         {activa === "resumen" && <ResumenHub key={refresco} yo={yo} equipo={equipo} modulos={negocio.modulos} hayClientes={hayClientes} sub={subResumen} onSub={setSubResumen} irA={irA} />}
         {activa === "ajustes" && (
@@ -209,6 +214,12 @@ function Panel({ userId }: { userId: string }) {
             pref={pref} marca={marca} onPref={setPref} onMarca={setMarca} />
         )}
       </main>
+
+      {mostrarBotonTurno(activa) && hayAgenda && !venta && (
+        <button className="fab" onClick={() => setNuevoTurno((n) => n + 1)} aria-label="Nuevo turno">
+          <Icono nombre="mas" tam={22} /> Turno
+        </button>
+      )}
 
       {mostrarBotonVenta(activa) && !venta && (
         <button className="fab" onClick={() => setVenta({ turno: null })} aria-label="Nueva venta">
@@ -235,12 +246,17 @@ function Panel({ userId }: { userId: string }) {
   );
 }
 
-async function cargarDatos(userId: string): Promise<{ equipo: Membresia[]; negocio: DatosNegocio | null; marca: Marca | null }> {
+async function cargarDatos(userId: string): Promise<{ equipo: Membresia[]; negocio: DatosNegocio | null; marca: Marca | null; pausa: string | null }> {
   const sb = getSupabase();
   const { data } = await sb.from("memberships").select(COLUMNAS).eq("active", true);
   const filas = (data as Membresia[]) ?? [];
   const mia = filas.find((m) => m.user_id === userId);
-  if (!mia) return { equipo: filas, negocio: null, marca: null };
+  if (!mia) {
+    // Sin barbería activa: puede ser que la cuenta esté pausada (no pagó). La función responde solo si es por eso.
+    const { data: p } = await sb.rpc("estado_de_mi_cuenta");
+    const nombre = (p as { business_name: string }[] | null)?.[0]?.business_name ?? null;
+    return { equipo: filas, negocio: null, marca: null, pausa: nombre };
+  }
 
   const [{ data: b }, { data: mods }, { data: colores, error: errColores }, { data: marcaFila }] = await Promise.all([
     sb.from("businesses").select("name,plan,setup_completed_at").eq("id", mia.business_id).single(),
@@ -264,6 +280,7 @@ async function cargarDatos(userId: string): Promise<{ equipo: Membresia[]; negoc
   return {
     equipo: filas.filter((m) => m.business_id === mia.business_id),
     marca: marcaDb,
+    pausa: null,
     negocio: {
       nombre: fila?.name ?? "",
       plan: fila?.plan ?? "BASICO",
@@ -273,6 +290,20 @@ async function cargarDatos(userId: string): Promise<{ equipo: Membresia[]; negoc
       logoVersion: marca?.logo_version ?? 0,
     },
   };
+}
+
+// Cuenta pausada por falta de pago: no se perdió nada y se reanuda cuando se regulariza.
+function CuentaPausada({ nombre }: { nombre: string }) {
+  const enlace = urlSoporte(`Hola, soy de ${nombre}. Quiero reactivar mi cuenta de la app.`);
+  return (
+    <main className="mx-auto flex min-h-dvh max-w-sm flex-col items-start justify-center gap-4 px-6">
+      <h1 className="titulo text-3xl">Cuenta pausada</h1>
+      <p>La cuenta de <strong>{nombre}</strong> está pausada. No se perdió nada: tus ventas, turnos y clientes siguen guardados y vuelven a estar disponibles apenas se reactive.</p>
+      <p className="texto-suave text-sm">Para reactivarla, comunicate con soporte.</p>
+      {enlace && <a className="boton" href={enlace} target="_blank" rel="noopener noreferrer">Escribir a soporte por WhatsApp</a>}
+      <button className="boton-fantasma" onClick={() => getSupabase().auth.signOut()}>Salir</button>
+    </main>
+  );
 }
 
 function Mensaje({ texto, children }: { texto: string; children?: React.ReactNode }) {

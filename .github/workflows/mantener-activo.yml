@@ -1,0 +1,31 @@
+# Mantiene activa la base de datos de Supabase (plan gratis): si pasa una semana sin actividad, Supabase la pausa.
+# Cada 2 días llama a la función pública `ping` (migración 15), que solo responde "ok" y no toca ningún dato.
+# La URL y la clave pública (la misma que usa la app en el navegador) se leen de wrangler.jsonc: no hay secretos acá.
+name: Mantener activa la base
+
+on:
+  schedule:
+    - cron: "17 12 */2 * *"   # cada 2 días, 09:17 hora argentina
+  workflow_dispatch: {}        # también se puede correr a mano desde la pestaña Actions
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: wrangler.jsonc
+          sparse-checkout-cone-mode: false
+      - name: Llamar a ping
+        run: |
+          URL=$(grep -oP '"SUPABASE_URL"\s*:\s*"\K[^"]+' wrangler.jsonc)
+          KEY=$(grep -oP '"SUPABASE_ANON_KEY"\s*:\s*"\K[^"]+' wrangler.jsonc)
+          if [ -z "$URL" ] || [ -z "$KEY" ]; then echo "No encontré SUPABASE_URL o SUPABASE_ANON_KEY en wrangler.jsonc"; exit 1; fi
+          for intento in 1 2 3; do
+            respuesta=$(curl -sS --max-time 30 -X POST "$URL/rest/v1/rpc/ping" -H "apikey: $KEY" -H "Content-Type: application/json" -d '{}') && [ "$respuesta" = '"ok"' ] && { echo "Base activa: $respuesta"; exit 0; }
+            echo "Intento $intento sin éxito: $respuesta"; sleep 20
+          done
+          echo "La base no respondió. Revisá si Supabase la pausó (supabase.com/dashboard) o si falta aplicar la migración 15."; exit 1

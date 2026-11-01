@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mostrarBotonVenta, pestanasVisibles, subAjustesDisponibles, subResumenDisponibles, ubicar } from "./navegacion";
+import { mostrarBotonTurno, mostrarBotonVenta, pestanasVisibles, subAjustesDisponibles, subResumenDisponibles, ubicar } from "./navegacion";
 
 describe("navegación", () => {
   it("las pestañas son Inicio, Resumen y Ajustes, y Agenda solo si el módulo está encendido", () => {
@@ -11,6 +11,9 @@ describe("navegación", () => {
   it("el botón flotante de venta solo existe en Inicio", () => {
     expect(mostrarBotonVenta("inicio")).toBe(true);
     for (const t of ["agenda", "resumen", "ajustes"] as const) expect(mostrarBotonVenta(t)).toBe(false);
+    // El botón de turno es al revés: solo en Agenda.
+    expect(mostrarBotonTurno("agenda")).toBe(true);
+    for (const t of ["inicio", "resumen", "ajustes"] as const) expect(mostrarBotonTurno(t)).toBe(false);
   });
 
   it("Caja y Gastos viven dentro de Resumen, y Clientes dentro de Ajustes", () => {
