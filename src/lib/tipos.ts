@@ -182,3 +182,9 @@ export interface EntradaAuditoria {
 export interface FilaDia { dia: string; cantidad: number; vendido: number; para_local: number }
 export interface FilaHora { hora: number; cantidad: number; vendido: number }
 export interface FilaTopCliente { client_id: string; nombre: string; visitas: number; gastado: number }
+
+// Métricas visuales (migración 14)
+export interface FilaCalor { dia_semana: number; hora: number; cantidad: number; vendido: number }
+export interface FilaRecurrencia { con_cliente: number; recurrentes: number; intervalo_dias: number | null; dormidos: number }
+export interface FilaGastoDia { dia: string; total: number }
+export interface FilaRentabilidadServicio { service_name: string; cantidad: number; vendido: number; para_local: number }

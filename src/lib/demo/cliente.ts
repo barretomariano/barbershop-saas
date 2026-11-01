@@ -209,6 +209,32 @@ function rpc(nombre: string, a: Args): Resp {
         .map(([client_id, g]) => ({ client_id, nombre: String(db().clients.find((c) => c.id === client_id)?.name ?? "Cliente"), visitas: g.length, gastado: suma(g, "amount") }))
         .sort((x, y) => y.gastado - x.gastado).slice(0, Number(a.p_limite ?? 5)));
     }
+    case "mapa_calor": {
+      const diaSemanaAR = (iso: string) => (new Date(new Date(iso).getTime() + OFFSET_AR).getUTCDay() + 6) % 7;
+      return ok([...agrupar(ventasValidas(a), (v) => `${diaSemanaAR(String(v.sold_at))}|${horaAR(String(v.sold_at))}`)]
+        .map(([k, g]) => ({ dia_semana: Number(k.split("|")[0]), hora: Number(k.split("|")[1]), cantidad: g.length, vendido: suma(g, "amount") })));
+    }
+    case "recurrencia_clientes": {
+      const todas = db().sales.filter((v) => v.status === "VALID" && v.client_id);
+      const diasDe = (xs: Fila[]) => [...agrupar(xs, (v) => String(v.client_id))].map(([c, g]) => ({ c, dias: [...new Set(g.map((v) => diaAR(String(v.sold_at))))].sort() }));
+      const enPeriodo = diasDe(todas.filter((v) => String(v.sold_at) >= String(a.p_desde) && String(v.sold_at) < String(a.p_hasta)));
+      const intervalos = enPeriodo.filter((x) => x.dias.length > 1).map((x) => (Date.parse(x.dias[x.dias.length - 1]) - Date.parse(x.dias[0])) / 86_400_000 / (x.dias.length - 1));
+      const corte = hoyAR(new Date(Date.now() - 45 * 86_400_000));
+      return ok([{
+        con_cliente: enPeriodo.length, recurrentes: enPeriodo.filter((x) => x.dias.length > 1).length,
+        intervalo_dias: intervalos.length ? Math.round((intervalos.reduce((s, x) => s + x, 0) / intervalos.length) * 10) / 10 : null,
+        dormidos: diasDe(todas).filter((x) => x.dias.length >= 2 && x.dias[x.dias.length - 1] < corte).length,
+      }]);
+    }
+    case "serie_gastos": {
+      return ok([...agrupar(gastosValidos(a), (g) => diaAR(String(g.spent_at)))]
+        .map(([dia, g]) => ({ dia, total: suma(g, "amount") })).sort((x, y) => x.dia.localeCompare(y.dia)));
+    }
+    case "rentabilidad_servicios": {
+      return ok([...agrupar(ventasValidas(a), (v) => String(v.service_name ?? "Sin servicio"))]
+        .map(([service_name, g]) => ({ service_name, cantidad: g.length, vendido: suma(g, "amount"), para_local: suma(g, "local_amount") }))
+        .sort((x, y) => y.para_local - x.para_local));
+    }
     case "fijos_mensuales": {
       const activos = db().memberships.filter((m) => m.active);
       return ok([{

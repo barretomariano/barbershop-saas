@@ -6,14 +6,16 @@ import { formatearARS } from "@/lib/dinero";
 import { hoyAR } from "@/lib/periodos";
 import { aCSV, completarDias, mejorDiaSemana, ticketPromedio } from "@/lib/gestion";
 import { DIAS_SEMANA, rangoDia, sumarDias } from "@/lib/turnos";
-import type { FilaDia, FilaHora, FilaTopCliente, Membresia } from "@/lib/tipos";
+import type { FilaCalor, FilaDia, FilaTopCliente, Membresia } from "@/lib/tipos";
+import { matrizCalor, textoMejorHorario } from "@/lib/series";
+import { GraficoArea, MapaCalor } from "@/components/graficos";
 
 const OPCIONES = [{ dias: 30, texto: "30 días" }, { dias: 90, texto: "90 días" }, { dias: 365, texto: "1 año" }];
 
 export default function Reportes({ yo, hayClientes }: { yo: Membresia; hayClientes: boolean }) {
   const [dias, setDias] = useState(30);
   const [serie, setSerie] = useState<FilaDia[] | null>(null);
-  const [horas, setHoras] = useState<FilaHora[]>([]);
+  const [calorFilas, setCalorFilas] = useState<FilaCalor[]>([]);
   const [top, setTop] = useState<FilaTopCliente[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,14 +30,14 @@ export default function Reportes({ yo, hayClientes }: { yo: Membresia; hayClient
     const args = { p_business: yo.business_id, p_desde: rango.desde, p_hasta: hasta };
     void Promise.all([
       sb.rpc("serie_diaria", args),
-      sb.rpc("ventas_por_hora", args),
+      sb.rpc("mapa_calor", args),
       hayClientes ? sb.rpc("top_clientes", { ...args, p_limite: 5 }) : Promise.resolve({ data: [], error: null }),
-    ]).then(([s, h, t]) => {
+    ]).then(([s, c, t]) => {
       if (!vivo) return;
-      if (s.error || h.error || t.error) setError("No se pudieron cargar los reportes.");
+      if (s.error || t.error) setError("No se pudieron cargar los reportes.");
       else setError(null);
       setSerie((s.data as FilaDia[]) ?? []);
-      setHoras((h.data as FilaHora[]) ?? []);
+      setCalorFilas(c.error ? [] : ((c.data as FilaCalor[]) ?? []));
       setTop((t.data as FilaTopCliente[]) ?? []);
     });
     return () => { vivo = false; };
@@ -46,8 +48,7 @@ export default function Reportes({ yo, hayClientes }: { yo: Membresia; hayClient
   const vendido = serie.reduce((s, f) => s + f.vendido, 0);
   const cantidad = serie.reduce((s, f) => s + f.cantidad, 0);
   const completa = completarDias(serie, desdeDia, dias);
-  const maxDia = Math.max(1, ...completa.map((f) => f.vendido));
-  const maxHora = Math.max(1, ...horas.map((h) => h.vendido));
+  const calor = matrizCalor(calorFilas, "cantidad");
   const mejor = mejorDiaSemana(serie);
   const diasConVentas = serie.length;
 
@@ -78,28 +79,22 @@ export default function Reportes({ yo, hayClientes }: { yo: Membresia; hayClient
 
       <div>
         <h2 className="mb-2 font-medium">Ventas por día</h2>
-        <div className="flex h-32 items-end gap-px overflow-x-auto" role="img" aria-label="Gráfico de ventas por día">
-          {completa.map((f) => (
-            <div key={f.dia} title={`${f.dia.split("-").reverse().join("/")}: ${formatearARS(f.vendido)}`} className="min-w-[3px] flex-1 rounded-t"
-              style={{ height: `${Math.max(f.vendido ? 4 : 1, (f.vendido / maxDia) * 100)}%`, background: f.vendido ? "var(--acento)" : "var(--linea)" }} />
-          ))}
+        <div className="tarjeta">
+          <GraficoArea etiquetas={completa.map((f) => f.dia.split("-").reverse().slice(0, 2).join("/"))} actual={completa.map((f) => f.vendido)}
+            previo={completa.map(() => null)} formato={formatearARS} descripcion="Gráfico de ventas por día" />
         </div>
-        <p className="texto-suave mt-1 flex justify-between text-xs"><span>{desdeDia.split("-").reverse().join("/")}</span><span>hoy</span></p>
       </div>
 
       <div>
         <h2 className="mb-2 font-medium">Horarios con más ventas</h2>
-        {horas.length === 0 ? <p className="texto-suave text-sm">Sin ventas en el período.</p> : (
-          <ul className="flex flex-col gap-1 text-sm">
-            {horas.map((h) => (
-              <li key={h.hora} className="flex items-center gap-2">
-                <span className="w-12 shrink-0">{String(h.hora).padStart(2, "0")}:00</span>
-                <div className="h-3 flex-1 overflow-hidden rounded" style={{ background: "var(--linea)" }}><div className="h-full" style={{ width: `${(h.vendido / maxHora) * 100}%`, background: "var(--acento)" }} /></div>
-                <span className="w-10 shrink-0 text-right texto-suave">{h.cantidad}</span>
-              </li>
-            ))}
-          </ul>
-        )}
+        <div className="tarjeta flex flex-col gap-2">
+          {calor.total === 0 ? <p className="texto-suave text-sm">Sin ventas en el período.</p> : (
+            <>
+              <p className="titulo text-[22px] leading-tight">{textoMejorHorario(calor.mejor)}</p>
+              <MapaCalor calor={calor} unidad="ventas" />
+            </>
+          )}
+        </div>
       </div>
 
       {hayClientes && (

@@ -76,4 +76,25 @@ describe("modo demo: cliente de ejemplo", () => {
     const { data: fila } = await sb.from("user_widgets").select("layout").eq("business_id", DEMO_NEGOCIO_ID).eq("user_id", DEMO_USER_ID).maybeSingle();
     expect(fila).toMatchObject({ layout: { a: 1 } });
   });
+
+  it("las métricas visuales responden con datos coherentes", async () => {
+    const hasta = new Date(Date.now() + 60_000).toISOString();
+    const desde = new Date(Date.now() - 89 * 86_400_000).toISOString();
+    const args = { p_business: DEMO_NEGOCIO_ID, p_desde: desde, p_hasta: hasta };
+    const calor = (await sb.rpc("mapa_calor", args)).data as { dia_semana: number; hora: number; cantidad: number }[];
+    expect(calor.length).toBeGreaterThan(10);
+    expect(calor.every((c) => c.dia_semana >= 0 && c.dia_semana <= 6 && c.hora >= 0 && c.hora <= 23)).toBe(true);
+    const { data: ventas } = await sb.rpc("resumen_ventas", args);
+    const total = (ventas as { cantidad: number }[]).reduce((t, f) => t + f.cantidad, 0);
+    expect(calor.reduce((t, c) => t + c.cantidad, 0)).toBe(total);
+
+    const rec = ((await sb.rpc("recurrencia_clientes", args)).data as { con_cliente: number; recurrentes: number }[])[0];
+    expect(rec.con_cliente).toBeGreaterThan(0);
+    expect(rec.recurrentes).toBeLessThanOrEqual(rec.con_cliente);
+
+    const rent = (await sb.rpc("rentabilidad_servicios", args)).data as { vendido: number; para_local: number }[];
+    expect(rent.length).toBeGreaterThan(0);
+    expect(rent.every((r) => r.para_local <= r.vendido)).toBe(true);
+    expect(Array.isArray((await sb.rpc("serie_gastos", args)).data)).toBe(true);
+  });
 });

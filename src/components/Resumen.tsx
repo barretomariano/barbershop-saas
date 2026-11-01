@@ -61,10 +61,10 @@ export default function Resumen({ yo, equipo }: Props) {
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       {cargando ? <p className="texto-suave">Cargando…</p> : (
         <>
-          <div className="tarjeta tarjeta-principal flex flex-col gap-3">
+          <div className="cap cap-color flex flex-col gap-3">
             <div>
-              <p className="texto-suave text-sm font-semibold">Vendido</p>
-              <p className="monto text-[40px] leading-none">{formatearARS(total)}</p>
+              <p className="titulo-tarjeta">Vendido</p>
+              <p className="monto">{formatearARS(total)}</p>
             </div>
             <div className="flex gap-6">
               <div><p className="texto-suave text-xs">{yo.role === "BARBER" ? "Tu ganancia" : "Para barberos"}</p><p className="monto text-xl">{formatearARS(paraBarbero)}</p></div>

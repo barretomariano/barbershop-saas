@@ -18,6 +18,8 @@ import {
 } from "@/lib/widgets";
 import type { Destino } from "@/lib/navegacion";
 import { Anillo, Cargando, EncabezadoHoja, Hoja, Icono } from "@/components/ui";
+import { Barra, BarraMeta, Tarjeta } from "@/components/capsulas";
+import { Desempeno, Flujo, Horarios, Recurrencia, Rentabilidad, ResumenMes, Tendencia, type VProps } from "@/components/widgetsVisuales";
 
 interface Props {
   zona: Zona; periodo: Periodo; yo: Membresia; equipo: Membresia[]; modulos: ModuloNegocio[]; irA: (d: Destino) => void; refresco?: number;
@@ -44,7 +46,7 @@ interface Datos {
 const suma = (f: FilaResumenVentas[], k: "vendido" | "para_barbero" | "para_local" | "cantidad") => f.reduce((s, x) => s + x[k], 0);
 const COMPARA: Record<Periodo, string> = { hoy: "que ayer", semana: "que la semana pasada", mes: "que el mes anterior", anio: "que el año anterior" };
 const NOMBRE: Record<Periodo, string> = { hoy: "hoy", semana: "esta semana", mes: "este mes", anio: "este año" };
-const COLORES = ["var(--acento)", "var(--par)", "var(--ok)", "color-mix(in srgb, var(--acento) 45%, #fff)", "var(--suave)"];
+const COLORES = ["var(--acento-vivo)", "var(--par-vivo)", "var(--ok)", "color-mix(in srgb, var(--acento-vivo) 45%, var(--sup-3))", "var(--suave)"];
 
 function textoComparacion(v: Variacion, p: Periodo): string {
   if (v.direccion === "sin-base") return "Sin datos para comparar";
@@ -110,7 +112,7 @@ export default function Tablero({ zona, periodo, yo, equipo, modulos, irA, refre
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       <div className="tablero">
         {acomodar(ids).map(({ id, ancho }) => (
-          <Widget key={id} id={id} ancho={ancho} zona={zona} yo={yo} gestion={gestion} periodo={periodo} datos={datos} nombre={nombre} irA={irA} />
+          <Widget key={id} id={id} ancho={ancho} zona={zona} yo={yo} gestion={gestion} periodo={periodo} datos={datos} nombre={nombre} irA={irA} version={refresco} />
         ))}
       </div>
 
@@ -145,32 +147,16 @@ export default function Tablero({ zona, periodo, yo, equipo, modulos, irA, refre
   );
 }
 
-function Tarjeta({ titulo, ir, ancho, tipo, children }: { titulo: string; ir: () => void; ancho: 1 | 2; tipo?: "orbe"; children: React.ReactNode }) {
-  // Todas son el mismo vidrio esmerilado, sin color propio; solo la principal es más grande.
-  const base = tipo === "orbe" ? "tarjeta tarjeta-principal" : "tarjeta";
-  const extra = "";
-  return (
-    <div role="link" tabIndex={0} className={`${base} ${extra} tarjeta-click flex flex-col gap-2 w-${ancho}`}
-      onClick={ir} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); ir(); } }}>
-      <h2 className="titulo-tarjeta">
-        <span>{titulo}</span><Icono nombre="siguiente" tam={16} />
-      </h2>
-      {children}
-    </div>
-  );
-}
+interface WProps { id: IdWidget; ancho: 1 | 2; zona: Zona; yo: Membresia; gestion: boolean; periodo: Periodo; datos: Datos; nombre: (id: string) => string; irA: (d: Destino) => void; version: number }
 
-function Barra({ pct, color = "var(--acento-vivo)" }: { pct: number; color?: string }) {
-  return (
-    <div className="h-2 w-full overflow-hidden rounded-full" style={{ background: "var(--linea)" }} role="progressbar" aria-valuenow={Math.min(100, pct)} aria-valuemin={0} aria-valuemax={100}>
-      <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.max(0, pct))}%`, background: color }} />
-    </div>
-  );
-}
+const VISUALES: Partial<Record<IdWidget, (p: VProps) => React.ReactElement>> = {
+  resumen_mes: ResumenMes, tendencia: Tendencia, horarios: Horarios, recurrencia: Recurrencia, rentabilidad: Rentabilidad, flujo: Flujo, desempeno: Desempeno,
+};
 
-interface WProps { id: IdWidget; ancho: 1 | 2; zona: Zona; yo: Membresia; gestion: boolean; periodo: Periodo; datos: Datos; nombre: (id: string) => string; irA: (d: Destino) => void }
+function Widget({ id, ancho, zona, yo, gestion, periodo, datos, nombre, irA, version }: WProps) {
+  const Visual = VISUALES[id];
+  if (Visual) return <Visual yo={yo} gestion={gestion} periodo={zona === "inicio" ? "mes" : periodo} ancho={ancho} version={version} nombre={nombre} irA={irA} />;
 
-function Widget({ id, ancho, zona, yo, gestion, periodo, datos, nombre, irA }: WProps) {
   const vendido = suma(datos.actual, "vendido");
   const cantidad = suma(datos.actual, "cantidad");
   const paraLocal = suma(datos.actual, "para_local");
@@ -181,8 +167,8 @@ function Widget({ id, ancho, zona, yo, gestion, periodo, datos, nombre, irA }: W
     const v = variacion(vendido, suma(datos.anterior, "vendido"));
     const titulo = zona === "inicio" ? "Ventas de hoy" : gestion ? "Ventas brutas" : "Vendiste";
     return (
-      <Tarjeta titulo={titulo} ancho={ancho} tipo="orbe" ir={() => irA(zona === "inicio" ? "ventas" : "ventas")}>
-        <p className="monto text-[44px] leading-none">{formatearARS(vendido)}</p>
+      <Tarjeta titulo={titulo} ancho={ancho} tono="color" ir={() => irA("ventas")}>
+        <p className="monto">{formatearARS(vendido)}</p>
         <p className="texto-suave text-sm">{cantidad} {cantidad === 1 ? "venta" : "ventas"}{cantidad > 0 ? ` · ${formatearARS(Math.round(vendido / cantidad))} cada una` : ""}</p>
         <span className="pill" data-signo={v.direccion}>{textoComparacion(v, periodo)}</span>
       </Tarjeta>
@@ -207,9 +193,7 @@ function Widget({ id, ancho, zona, yo, gestion, periodo, datos, nombre, irA }: W
         <p className="texto-suave text-sm">{imp.detalle}</p>
         {imp.objetivoDia > 0 && (
           <div className="mt-1 flex flex-col gap-1">
-            <div className="h-2.5 w-full overflow-hidden rounded-full" style={{ background: "var(--sup-3)" }} role="progressbar" aria-valuenow={imp.pct} aria-valuemin={0} aria-valuemax={100}>
-              <div className="h-full rounded-full" style={{ width: `${imp.pct}%`, background: "linear-gradient(90deg, var(--acento-vivo), color-mix(in srgb, var(--acento-vivo) 55%, #fff))", boxShadow: "0 0 14px var(--acento-vivo)" }} />
-            </div>
+            <BarraMeta pct={imp.pct} />
             <div className="flex justify-between text-xs" style={{ color: "var(--suave)" }}>
               <span>{formatearARS(vendido)} hoy</span><span>{formatearARS(imp.objetivoDia)}</span>
             </div>
@@ -228,24 +212,24 @@ function Widget({ id, ancho, zona, yo, gestion, periodo, datos, nombre, irA }: W
   if (id === "ganancia") {
     if (!gestion) {
       return (
-        <Tarjeta titulo="Tu ganancia" ancho={ancho} ir={() => irA("ventas")}>
-          <p className="monto text-3xl">{formatearARS(paraBarbero)}</p>
+        <Tarjeta titulo="Tu ganancia" ancho={ancho} tono="tinta" ir={() => irA("ventas")}>
+          <p className="monto">{formatearARS(paraBarbero)}</p>
           <p className="texto-suave text-xs">De {formatearARS(vendido)} vendidos {NOMBRE[periodo]}</p>
         </Tarjeta>
       );
     }
     if (zona === "inicio") {
       return (
-        <Tarjeta titulo="Para el local" ancho={ancho} ir={() => irA("ventas")}>
-          <p className="monto text-3xl">{formatearARS(paraLocal)}</p>
+        <Tarjeta titulo="Para el local" ancho={ancho} tono="tinta" ir={() => irA("ventas")}>
+          <p className="monto">{formatearARS(paraLocal)}</p>
           <p className="texto-suave text-xs">Su parte de lo vendido hoy, antes de gastos</p>
         </Tarjeta>
       );
     }
     const g = gananciaLocal({ vendido, paraLocal, gastos: gastosPeriodo, alquilerSilla: datos.fijos.alquiler, sueldos: datos.fijos.sueldos, incluirFijos: periodo === "mes" });
     return (
-      <Tarjeta titulo="Ganancia neta" ancho={ancho} ir={() => irA("gastos")}>
-        <p className="monto text-3xl" style={{ color: g.neta < 0 ? "var(--peligro)" : undefined }}>{formatearARS(g.neta)}</p>
+      <Tarjeta titulo="Ganancia neta" ancho={ancho} tono="tinta" ir={() => irA("gastos")}>
+        <p className="monto" style={{ color: g.neta < 0 ? "#ff9b8f" : undefined }}>{formatearARS(g.neta)}</p>
         <p className="texto-suave text-xs">Lo que queda en el local</p>
       </Tarjeta>
     );
@@ -396,7 +380,7 @@ function Widget({ id, ancho, zona, yo, gestion, periodo, datos, nombre, irA }: W
             {datos.gastos.map((g) => (
               <li key={g.category} className="flex flex-col gap-1">
                 <span className="flex justify-between gap-2"><span>{CATEGORIAS_GASTO.find((c) => c.valor === g.category)?.etiqueta ?? g.category}</span><span className="monto">{formatearARS(g.total)}</span></span>
-                <Barra pct={(g.total / max) * 100} color="var(--par)" />
+                <Barra pct={(g.total / max) * 100} color="var(--par-vivo)" />
               </li>
             ))}
           </ul>

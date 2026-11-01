@@ -51,6 +51,12 @@ Pendiente: sucursales y permisos configurables (plan Avanzado) y restricciones p
 
 ## Rediseño por etapas (31 oct 2026, referencia: tablero fintech con cápsulas)
 - Tema: Claro (arena fundida en degradado con el color principal, `--fondo-claro`), Oscuro (negro AMOLED #000, sin degradados) o Automático (sigue al celular). Preferencia por dispositivo en `barberia.tema`.
-- Etapa 1 (hecha): colores libres + motor de temas + AMOLED. Pendiente de Maro: aplicar la migración 13 en Supabase. Verificado: tipos, lint, 163 tests, build; NO visto en navegador.
-- Siguientes: 2) componentes (cápsulas sólidas 1-2 por pantalla, selector de período, gráficos reutilizables, sin grano en tarjetas) 3) Inicio y Resumen 4) vistas por rol (barbero/dueño, mapa de calor día×hora, recurrencia) 5) resto de pantallas.
-- Regla de uso del color (como la referencia): el principal marca lo importante (cápsula héroe, metas, línea/área del gráfico, opción activa); el secundario es la segunda serie de los gráficos y detalles; la cápsula "neta" y los botones son de tinta oscura.
+- Etapa 1 (hecha, migración 13): colores libres + motor de temas + AMOLED.
+- Etapas 2 a 5 (hechas, migración 14): sistema de cápsulas y gráficos, Inicio y Resumen rediseñados, vistas por rol, resto de pantallas en el mismo estilo.
+  - `components/capsulas.tsx`: `Tarjeta` (tono `neutra` | `color` | `tinta`), `Barra`, `BarraMeta`, `useRpc`. Máximo 1 o 2 cápsulas sólidas por pantalla: Ventas = `color`, Ganancia = `tinta`; todo lo demás neutro y mate (sin grano ni vidrio; el esmerilado queda solo en cabecera y barra inferior).
+  - `components/graficos.tsx`: `GraficoArea` (actual en principal, anterior punteado en secundario), `BarrasDobles`, `MapaCalor` (día × hora), `TiraMeses`. SVG/CSS propio, sin librerías.
+  - `components/widgetsVisuales.tsx`: widgets que piden sus propios datos: `resumen_mes`, `tendencia`, `horarios`, `recurrencia`, `rentabilidad`, `flujo`, `desempeno` (solo barbero). Se registran en `lib/widgets.ts` (catálogo, por rol y módulo) y en `VISUALES` de `Tablero.tsx`.
+  - `lib/series.ts`: lógica pura y testeada (plan de cada período con su anterior alineado, tira de meses, matriz de calor, recurrencia, rendimiento). No usar `Date.now()` en el render (regla de lint): calcular rangos con `hoyAR()` y `rangoDia()`.
+  - Migración 14 (verificada en un Postgres real): `mapa_calor`, `recurrencia_clientes`, `serie_gastos`, `rentabilidad_servicios`; todas `security invoker` (el barbero solo ve lo suyo). El modo demo las implementa en `lib/demo/cliente.ts`.
+  - Reportes usa los mismos gráficos. Resumen > Ventas abre con cápsula de color.
+- Verificado: tipos, lint, 187 tests y build. Pendiente: revisión visual en navegador (no hay navegador en el entorno de Claude).

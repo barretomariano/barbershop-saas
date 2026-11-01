@@ -25,6 +25,25 @@ describe("widgets según zona, rol y módulos", () => {
   });
 });
 
+describe("widgets del rediseño", () => {
+  const ids = (zona: "inicio" | "resumen", rol: "OWNER" | "MANAGER" | "BARBER", mods: ("AGENDA" | "CLIENTES")[]) =>
+    [...widgetsFijos(zona, rol, mods), ...widgetsOpcionales(zona, rol, mods)].map((w) => w.id);
+  it("el dueño ve rentabilidad y lo que entra contra lo que sale; el barbero ve su rendimiento", () => {
+    expect(ids("resumen", "OWNER", [])).toEqual(expect.arrayContaining(["rentabilidad", "flujo", "tendencia", "horarios"]));
+    expect(ids("resumen", "OWNER", [])).not.toContain("desempeno");
+    expect(ids("resumen", "BARBER", [])).toEqual(expect.arrayContaining(["desempeno", "tendencia", "horarios"]));
+    expect(ids("resumen", "BARBER", [])).not.toContain("rentabilidad");
+    expect(ids("resumen", "BARBER", [])).not.toContain("flujo");
+  });
+  it("la recurrencia de clientes solo aparece con el módulo de clientes", () => {
+    expect(ids("resumen", "OWNER", [])).not.toContain("recurrencia");
+    expect(ids("resumen", "BARBER", ["CLIENTES"])).toContain("recurrencia");
+  });
+  it("el inicio abre con el resumen del mes y después las dos cápsulas principales", () => {
+    expect(widgetsFijos("inicio", "OWNER", []).map((w) => w.id).slice(0, 3)).toEqual(["resumen_mes", "ventas", "ganancia"]);
+  });
+});
+
 describe("sanearElegidos", () => {
   it("descarta desconocidos, repetidos, fijos y no permitidos", () => {
     const crudo = [{ id: "inicio:medios_pago" }, { id: "inicio:medios_pago" }, { id: "inicio:inventado" }, { id: "inicio:por_barbero" }, { id: "inicio:ventas" }, { id: "resumen:ticket" }];
@@ -54,8 +73,8 @@ describe("acomodar", () => {
     expect(acomodar(["ventas", "ganancia"])).toEqual([{ id: "ventas", ancho: 2 }, { id: "ganancia", ancho: 2 }]);
   });
   it("dos chicos seguidos comparten la fila", () => {
-    expect(acomodar(["ganancia", "por_cobrar", "turnos_hoy"])).toEqual([
-      { id: "ganancia", ancho: 1 }, { id: "por_cobrar", ancho: 1 }, { id: "turnos_hoy", ancho: 2 },
+    expect(acomodar(["metas", "ticket", "desglose"])).toEqual([
+      { id: "metas", ancho: 1 }, { id: "ticket", ancho: 1 }, { id: "desglose", ancho: 2 },
     ]);
   });
   it("chico seguido de grande se estira; ordena según el catálogo", () => {
