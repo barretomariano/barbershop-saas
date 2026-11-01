@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getSupabase } from "@/lib/supabase";
-import { CLAVE_MARCA, CLAVE_TEMA, guardarLocal, serializarMarca, type Marca, type PrefTema } from "@/lib/tema";
+import { CLAVE_MARCA, CLAVE_TEMA, guardarLocal, marcasIguales, serializarMarca, type Marca, type PrefTema } from "@/lib/tema";
 import type { Membresia } from "@/lib/tipos";
 import { Segmentado } from "@/components/ui";
 import SelectorColores from "@/components/SelectorColores";
@@ -11,10 +11,19 @@ interface Props { yo: Membresia; pref: PrefTema; marca: Marca; onPref: (t: PrefT
 
 export default function Apariencia({ yo, pref, marca, onPref, onMarca }: Props) {
   const esOwner = yo.role === "OWNER";
+  // `marca` (la que llega de afuera) cambia mientras se elige, porque la vista previa se aplica a toda la app.
+  // Por eso lo realmente guardado se recuerda aparte: contra eso se decide si hay algo para guardar.
+  const [guardada, setGuardada] = useState<Marca>(marca);
   const [borrador, setBorrador] = useState<Marca>(marca);
   const [guardando, setGuardando] = useState(false);
   const [msg, setMsg] = useState<{ tipo: "ok" | "error"; texto: string } | null>(null);
-  const cambiado = borrador.principal !== marca.principal || borrador.secundario !== marca.secundario;
+  const cambiado = !marcasIguales(borrador, guardada);
+
+  // Al salir de la pantalla sin guardar, la app vuelve a los colores guardados.
+  const guardadaRef = useRef(guardada);
+  const onMarcaRef = useRef(onMarca);
+  useEffect(() => { guardadaRef.current = guardada; onMarcaRef.current = onMarca; });
+  useEffect(() => () => onMarcaRef.current(guardadaRef.current), []);
 
   function cambiarPref(t: PrefTema) {
     guardarLocal(CLAVE_TEMA, t);
@@ -29,10 +38,10 @@ export default function Apariencia({ yo, pref, marca, onPref, onMarca }: Props) 
     const { error } = await getSupabase().from("businesses").update({ primary_color: borrador.principal, secondary_color: borrador.secundario }).eq("id", yo.business_id);
     setGuardando(false);
     if (error) {
-      onMarca(marca); setBorrador(marca);
-      setMsg({ tipo: "error", texto: "No se pudieron guardar los colores para todo el negocio. Falta aplicar la migración 13 en Supabase." });
+      setMsg({ tipo: "error", texto: "No se pudieron guardar los colores. Revisá tu conexión y probá de nuevo; tus colores elegidos siguen acá." });
     } else {
       guardarLocal(CLAVE_MARCA, serializarMarca(borrador));
+      setGuardada(borrador);
       setMsg({ tipo: "ok", texto: "Listo: tu equipo ve estos colores la próxima vez que abra la app." });
     }
   }
@@ -57,7 +66,7 @@ export default function Apariencia({ yo, pref, marca, onPref, onMarca }: Props) 
             {msg && <p role={msg.tipo === "error" ? "alert" : "status"} className={`text-sm font-medium ${msg.tipo === "error" ? "text-red-600" : ""}`}>{msg.texto}</p>}
             <div className="flex gap-2">
               <button className="boton flex-1" disabled={!cambiado || guardando} onClick={() => void guardar()}>{guardando ? "Guardando…" : "Guardar colores"}</button>
-              {cambiado && <button className="boton-fantasma" disabled={guardando} onClick={() => elegir(marca)}>Descartar</button>}
+              {cambiado && <button className="boton-fantasma" disabled={guardando} onClick={() => elegir(guardada)}>Descartar</button>}
             </div>
           </div>
         )}

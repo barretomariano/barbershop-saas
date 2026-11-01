@@ -48,6 +48,10 @@ export function marcaValida(principal: unknown, secundario: unknown): Marca | nu
   return p && s ? { principal: p, secundario: s } : null;
 }
 
+export function marcasIguales(a: Marca, b: Marca): boolean {
+  return a.principal === b.principal && a.secundario === b.secundario;
+}
+
 export function serializarMarca(m: Marca): string { return `${m.principal}|${m.secundario}`; }
 export function leerMarcaSerializada(v: unknown): Marca | null {
   if (typeof v !== "string") return null;

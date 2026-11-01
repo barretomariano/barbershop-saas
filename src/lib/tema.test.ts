@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { contraste, tintaSobre } from "./colores";
-import { FONDO_CLARO, FONDO_OSCURO, MARCA_POR_DEFECTO, SUGERENCIAS, SCRIPT_INICIAL, leerMarcaSerializada, marcaValida, resolverTema, serializarMarca, variablesDeMarca, esPrefTema } from "./tema";
+import { marcasIguales, FONDO_CLARO, FONDO_OSCURO, MARCA_POR_DEFECTO, SUGERENCIAS, SCRIPT_INICIAL, leerMarcaSerializada, marcaValida, resolverTema, serializarMarca, variablesDeMarca, esPrefTema } from "./tema";
 
 // Colores difíciles a propósito: muy claros, muy oscuros, neón y grises.
 const EXTREMOS = ["#FFFFFF", "#000000", "#FFFF00", "#0A1A3A", "#D4F51F", "#808080", "#FF00FF", "#00FFFF", "#3B0A0A"];
@@ -76,5 +76,11 @@ describe("colores de marca", () => {
     expect(new Set(SUGERENCIAS.map((s) => s.id)).size).toBe(SUGERENCIAS.length);
     for (const s of SUGERENCIAS) expect(marcaValida(s.marca.principal, s.marca.secundario)).toEqual(s.marca);
     expect(tintaSobre("#FFFFFF")).toBe("#140F0B");
+  });
+
+  it("distingue lo elegido de lo guardado (así se habilita el botón Guardar)", () => {
+    const guardada = { principal: "#FF7A3D", secundario: "#3E63FF" };
+    expect(marcasIguales(guardada, { ...guardada })).toBe(true);
+    expect(marcasIguales(guardada, { ...guardada, secundario: "#000000" })).toBe(false);
   });
 });
