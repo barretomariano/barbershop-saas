@@ -68,3 +68,13 @@ En el plan gratis de Supabase la base se pausa sola si pasa una semana sin activ
 ## Backups mientras estés en el plan gratis
 
 El plan gratis **no hace backups automáticos**. Mientras tanto: una vez por semana, Supabase → *Database → Backups* o, mejor, bajá un respaldo con `pg_dump` (te lo armo cuando quieras). Cuando haya ganancia, el plan Pro (US$ 25/mes) trae backups diarios.
+
+## Si GitHub o Supabase muestran el error `type "..." already exists`
+
+Pasa porque las migraciones se pegaron a mano en el SQL Editor: la base ya tiene todo, pero el historial interno de Supabase (`supabase_migrations.schema_migrations`) no lo sabe, y al subir cambios a GitHub la integración intenta correrlas de nuevo.
+
+Arreglo (una sola vez, no toca ningún dato ni ejecuta ninguna migración): pegá y corré en el SQL Editor el contenido de `supabase/reparar_historial_migraciones.sql`. Es seguro repetirlo. Después, en GitHub, volvé a correr el chequeo (Re-run) o hacé cualquier cambio nuevo.
+
+**Regla de ahí en adelante, para cada migración nueva** (elegí una sola forma, nunca las dos):
+- Pegarla a mano en el SQL Editor y agregar su fila al historial (te paso la línea lista), o
+- No pegarla: dejar que la integración la aplique sola al subir a GitHub.
