@@ -34,10 +34,10 @@ describe("navegación", () => {
   });
 
   it("qué ve cada rol en Ajustes", () => {
-    expect(subAjustesDisponibles("BARBER", ["CLIENTES", "AGENDA"])).toEqual(["clientes", "apariencia"]);
-    expect(subAjustesDisponibles("MANAGER", [])).toEqual(["servicios", "apariencia"]);
+    expect(subAjustesDisponibles("BARBER", ["CLIENTES", "AGENDA"])).toEqual(["clientes", "apariencia", "ayuda"]);
+    expect(subAjustesDisponibles("MANAGER", [])).toEqual(["servicios", "apariencia", "ayuda"]);
     const dueno = subAjustesDisponibles("OWNER", ["AGENDA", "CLIENTES"]);
-    for (const s of ["clientes", "servicios", "equipo", "comisiones", "horarios", "modulos", "metas", "apariencia", "historial"] as const) expect(dueno).toContain(s);
+    for (const s of ["clientes", "servicios", "equipo", "comisiones", "horarios", "modulos", "metas", "apariencia", "historial", "ayuda"] as const) expect(dueno).toContain(s);
     expect(subAjustesDisponibles("OWNER", [])).not.toContain("horarios");
   });
 });

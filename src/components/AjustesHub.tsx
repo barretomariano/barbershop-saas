@@ -12,6 +12,7 @@ import Auditoria from "@/components/Auditoria";
 import Equipo from "@/components/Equipo";
 import Clientes from "@/components/Clientes";
 import Apariencia from "@/components/Apariencia";
+import Ayuda from "@/components/Ayuda";
 import MiMarca from "@/components/MiMarca";
 
 interface Props {
@@ -28,13 +29,14 @@ const FICHA: Record<SubAjustes, { titulo: string; detalle: string; icono: Nombre
   horarios: { titulo: "Horarios de trabajo", detalle: "Días y horas de la agenda", icono: "horarios" },
   metas: { titulo: "Metas del mes", detalle: "Objetivos de ventas", icono: "metas" },
   modulos: { titulo: "Módulos", detalle: "Encender o apagar Agenda y Clientes", icono: "modulos" },
+  ayuda: { titulo: "Ayuda", detalle: "Contactar a soporte por WhatsApp", icono: "ayuda" },
   apariencia: { titulo: "Apariencia", detalle: "Tema y colores de tu barbería", icono: "apariencia" },
   historial: { titulo: "Historial de cambios", detalle: "Quién cambió qué y cuándo", icono: "historial" },
 };
 
 const GRUPOS: { titulo: string; items: SubAjustes[] }[] = [
   { titulo: "Tu barbería", items: ["marca", "clientes", "servicios", "equipo", "comisiones", "horarios", "metas"] },
-  { titulo: "App", items: ["modulos", "apariencia", "historial"] },
+  { titulo: "App", items: ["modulos", "apariencia", "historial", "ayuda"] },
 ];
 
 export default function AjustesHub({ yo, equipo, negocio, sub, onSub, onCambio, pref, marca, onPref, onMarca }: Props) {
@@ -54,6 +56,7 @@ export default function AjustesHub({ yo, equipo, negocio, sub, onSub, onCambio, 
     if (abierta === "metas") contenido = <Metas yo={yo} equipo={equipo} />;
     if (abierta === "modulos") contenido = <Modulos yo={yo} negocio={negocio} onCambio={onCambio} />;
     if (abierta === "historial") contenido = <Auditoria yo={yo} equipo={equipo} />;
+    if (abierta === "ayuda") contenido = <Ayuda yo={yo} negocio={negocio.nombre} />;
     if (abierta === "apariencia") contenido = <Apariencia yo={yo} pref={pref} marca={marca} onPref={onPref} onMarca={onMarca} />;
     return (
       <div className="flex flex-col gap-5">

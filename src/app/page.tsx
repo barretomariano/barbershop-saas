@@ -300,7 +300,7 @@ function CuentaPausada({ nombre }: { nombre: string }) {
       <h1 className="titulo text-3xl">Cuenta pausada</h1>
       <p>La cuenta de <strong>{nombre}</strong> está pausada. No se perdió nada: tus ventas, turnos y clientes siguen guardados y vuelven a estar disponibles apenas se reactive.</p>
       <p className="texto-suave text-sm">Para reactivarla, comunicate con soporte.</p>
-      {enlace && <a className="boton" href={enlace} target="_blank" rel="noopener noreferrer">Escribir a soporte por WhatsApp</a>}
+      {enlace && <a className="boton boton-whatsapp" href={enlace} target="_blank" rel="noopener noreferrer"><Icono nombre="chat" tam={20} /> Contactar a soporte por WhatsApp</a>}
       <button className="boton-fantasma" onClick={() => getSupabase().auth.signOut()}>Salir</button>
     </main>
   );

@@ -68,3 +68,4 @@ Pendiente: sucursales y permisos configurables (plan Avanzado) y restricciones p
 - `.github/workflows/mantener-activo.yml` llama a `public.ping()` cada 2 días para que Supabase gratis no se pause.
 - Legal: borradores en `public/terminos.html` y `public/privacidad.html` (con campos [entre corchetes] por completar; aún sin enlazar desde la app) y revisión en `docs/revision-legal.md`.
 - Pruebas SQL: `supabase/tests/*.sql` (11 archivos, 356 verificaciones) contra Postgres 16 real con `00_simular_supabase.sql`; la 15 tiene `rls_pausa_test.sql`.
+- Ajustes → Ayuda (todos los roles): `components/Ayuda.tsx`, botón verde "Contactar a soporte por WhatsApp" (clase `.boton-whatsapp`, mismo estilo en la pantalla "Cuenta pausada"). Usa `NEXT_PUBLIC_SOPORTE_WHATSAPP`; sin número, la sección avisa que no hay contacto disponible.

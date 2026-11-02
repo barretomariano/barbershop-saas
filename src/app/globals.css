@@ -646,3 +646,7 @@ select.campo { background-position: right 20px center; padding-right: 46px; }
 .filtro-barberos .chip { flex: none; display: inline-flex; align-items: center; gap: 8px; }
 .cuenta { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 99px; font-size: 12px; font-weight: 700; background: var(--sup-3); }
 .chip[aria-pressed="true"] .cuenta { background: var(--acento-vivo); color: var(--sobre-vivo); }
+
+/* Botón de WhatsApp (verde de la marca WhatsApp; texto oscuro para que se lea bien). */
+.boton.boton-whatsapp { background: #25D366; color: #06240F; display: inline-flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none;
+  box-shadow: 0 12px 22px -14px rgba(7, 94, 84, 0.7); }

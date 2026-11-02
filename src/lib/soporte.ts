@@ -9,3 +9,9 @@ export function numeroSoporte(valor: string | undefined = process.env.NEXT_PUBLI
 export function urlSoporte(mensaje: string, numero: string | null = numeroSoporte()): string | null {
   return numero ? `https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}` : null;
 }
+
+// Mensaje que ya sale escrito al abrir WhatsApp desde Ajustes → Ayuda.
+export function mensajeAyuda(persona: string, barberia: string): string {
+  const quien = [persona.trim(), barberia.trim() ? `de ${barberia.trim()}` : ""].filter(Boolean).join(" ");
+  return `Hola, soy ${quien || "usuario de la app"}. Necesito ayuda con la app.`;
+}
