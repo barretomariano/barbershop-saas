@@ -18,6 +18,7 @@ import AjustesHub from "@/components/AjustesHub";
 import VentaModal, { type TurnoACobrar } from "@/components/VentaModal";
 import { Icono, type NombreIcono } from "@/components/ui";
 import { urlSoporte } from "@/lib/soporte";
+import { nombreCorto } from "@/lib/manifest";
 import { mostrarBotonTurno, mostrarBotonVenta, pestanasVisibles, ubicar, type Destino, type SubAjustes, type SubResumen, type Tab } from "@/lib/navegacion";
 import { aplicarApariencia, CLAVE_MARCA, guardarLocal, leerMarcaLocal, leerPrefTema, marcaValida, MARCA_POR_DEFECTO, PREF_TEMA_POR_DEFECTO, serializarMarca, SUGERENCIAS, type Marca, type PrefTema } from "@/lib/tema";
 
@@ -128,6 +129,18 @@ function Panel({ userId }: { userId: string }) {
     mq.addEventListener("change", alCambiar);
     return () => mq.removeEventListener("change", alCambiar);
   }, [pref, marca]);
+
+  // Ícono y nombre de la barbería al "Agregar a inicio" desde iPhone, aunque se haya entrado por el link general.
+  // (Si se entró por /b/<slug> el Worker ya lo pone; esto cubre el resto y se actualiza al cambiar el logo.)
+  useEffect(() => {
+    const idNegocio = equipo?.find((m) => m.user_id === userId)?.business_id;
+    if (!negocio || !idNegocio || negocio.logoVersion <= 0) return;
+    const url = urlLogo(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "", idNegocio, negocio.logoVersion, 512);
+    for (const rel of ["apple-touch-icon", "icon"]) {
+      document.querySelectorAll<HTMLLinkElement>(`link[rel="${rel}"]`).forEach((l) => { l.href = url; });
+    }
+    document.querySelector<HTMLMetaElement>('meta[name="apple-mobile-web-app-title"]')?.setAttribute("content", nombreCorto(negocio.nombre));
+  }, [equipo, negocio, userId]);
 
   if (equipo === null) return <Mensaje texto="Cargando…" />;
   const yo = equipo.find((m) => m.user_id === userId);

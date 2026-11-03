@@ -47,23 +47,28 @@ export function Icono({ nombre, tam = 22, className }: { nombre: NombreIcono; ta
 // Ventana que sube desde abajo (en celular) o se centra (en pantallas grandes).
 export function Hoja({ titulo, onCerrar, children, ancho }: { titulo: string; onCerrar: () => void; children: ReactNode; ancho?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
+  // onCerrar casi siempre llega como función nueva en cada render. Si el efecto dependiera de ella se reiniciaría
+  // con cada cambio de estado del formulario, le sacaría el foco al campo y en iOS el teclado se abriría y cerraría solo.
+  const cerrarRef = useRef(onCerrar);
+  useEffect(() => { cerrarRef.current = onCerrar; });
 
   useEffect(() => {
     const previo = document.activeElement as HTMLElement | null;
     const overflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    ref.current?.focus();
-    const tecla = (e: KeyboardEvent) => { if (e.key === "Escape") onCerrar(); };
+    // Solo se enfoca la ventana si ningún campo de adentro tomó el foco antes (ej. autoFocus del monto).
+    if (ref.current && !ref.current.contains(document.activeElement)) ref.current.focus({ preventScroll: true });
+    const tecla = (e: KeyboardEvent) => { if (e.key === "Escape") cerrarRef.current(); };
     window.addEventListener("keydown", tecla);
     return () => {
       document.body.style.overflow = overflow;
       window.removeEventListener("keydown", tecla);
-      previo?.focus?.();
+      previo?.focus?.({ preventScroll: true });
     };
-  }, [onCerrar]);
+  }, []);
 
   return (
-    <div className="fondo-hoja" onMouseDown={(e) => { if (e.target === e.currentTarget) onCerrar(); }}>
+    <div className="fondo-hoja" onMouseDown={(e) => { if (e.target === e.currentTarget) cerrarRef.current(); }}>
       <div ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-label={titulo} className="hoja outline-none" style={ancho ? { maxWidth: "40rem" } : undefined}>
         <div className="asa" aria-hidden="true" />
         {children}

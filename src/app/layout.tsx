@@ -16,6 +16,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  maximumScale: 1, // iOS hace zoom al enfocar un campo; así la app no salta ni se agranda al abrir el teclado
   viewportFit: "cover",
   themeColor: "#efe6db",
 };
