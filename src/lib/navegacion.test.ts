@@ -16,15 +16,16 @@ describe("navegación", () => {
     for (const t of ["inicio", "resumen", "ajustes"] as const) expect(mostrarBotonTurno(t)).toBe(false);
   });
 
-  it("Caja y Gastos viven dentro de Resumen, y Clientes dentro de Ajustes", () => {
-    expect(ubicar("caja", "OWNER", [])).toEqual({ tab: "resumen", sub: "caja" });
+  it("Cobros y Gastos viven dentro de Resumen, y Clientes dentro de Ajustes", () => {
+    expect(ubicar("cobros", "OWNER", [])).toEqual({ tab: "resumen", sub: "cobros" });
     expect(ubicar("gastos", "MANAGER", [])).toEqual({ tab: "resumen", sub: "gastos" });
     expect(ubicar("clientes", "OWNER", ["CLIENTES"])).toEqual({ tab: "ajustes", sub: "clientes" });
   });
 
-  it("un barbero no llega a Caja ni Gastos: cae en el panorama", () => {
-    expect(ubicar("caja", "BARBER", [])).toEqual({ tab: "resumen", sub: "panorama" });
-    expect(subResumenDisponibles("BARBER")).toEqual(["panorama", "ventas", "reportes"]);
+  it("un barbero llega a Cobros pero no a Gastos: cae en el panorama", () => {
+    expect(ubicar("cobros", "BARBER", [])).toEqual({ tab: "resumen", sub: "cobros" });
+    expect(ubicar("gastos", "BARBER", [])).toEqual({ tab: "resumen", sub: "panorama" });
+    expect(subResumenDisponibles("BARBER")).toEqual(["panorama", "ventas", "cobros", "reportes"]);
   });
 
   it("si el módulo está apagado, el destino vuelve al inicio o a Ajustes", () => {

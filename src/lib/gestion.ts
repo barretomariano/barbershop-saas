@@ -68,7 +68,7 @@ export function aCSV(filas: (string | number)[][]): string {
 const ENTIDADES: Record<string, string> = {
   sales: "Venta", expenses: "Gasto", memberships: "Equipo", services: "Servicio", business_modules: "Módulos",
   sales_goals: "Meta", budgets: "Presupuesto", suppliers: "Proveedor", recurring_expenses: "Gasto recurrente",
-  cash_closings: "Cierre de caja", settlements: "Liquidación",
+  cash_closings: "Cierre de caja", settlements: "Liquidación", payout_days: "Cobro de comisión",
 };
 const ACCIONES: Record<EntradaAuditoria["action"], string> = { INSERT: "Alta", UPDATE: "Cambio", DELETE: "Baja" };
 

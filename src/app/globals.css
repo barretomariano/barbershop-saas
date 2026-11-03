@@ -650,3 +650,12 @@ select.campo { background-position: right 20px center; padding-right: 46px; }
 /* Botón de WhatsApp (verde de la marca WhatsApp; texto oscuro para que se lea bien). */
 .boton.boton-whatsapp { background: #25D366; color: #06240F; display: inline-flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none;
   box-shadow: 0 12px 22px -14px rgba(7, 94, 84, 0.7); }
+
+/* Punto de aviso: algo para mirar (pedidos pendientes, cobros decididos). */
+.aviso { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--peligro); vertical-align: middle; margin-left: 6px; box-shadow: 0 0 0 3px color-mix(in srgb, var(--peligro) 22%, transparent); }
+.fila-cobro { display: flex; align-items: center; gap: 12px; padding: 12px 14px; }
+.fila-cobro[data-sel="true"] { background: color-mix(in srgb, var(--acento-vivo) 12%, transparent); }
+.estado-cobro { font-size: 12px; font-weight: 650; padding: 3px 9px; border-radius: 99px; background: var(--sup-3); white-space: nowrap; }
+.estado-cobro[data-e="PAID"] { background: color-mix(in srgb, var(--ok) 22%, transparent); color: var(--ok); }
+.estado-cobro[data-e="REQUESTED"] { background: color-mix(in srgb, var(--acento-vivo) 22%, transparent); }
+.estado-cobro[data-e="REJECTED"] { background: color-mix(in srgb, var(--peligro) 18%, transparent); color: var(--peligro); }

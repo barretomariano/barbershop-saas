@@ -3,18 +3,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getSupabase } from "@/lib/supabase";
 import { formatearARS, formatearHora } from "@/lib/dinero";
-import { rangoPeriodo, type Periodo } from "@/lib/periodos";
+import { anclaDe, rangoPeriodo } from "@/lib/periodos";
+import SelectorPeriodo, { type Seleccion } from "@/components/SelectorPeriodo";
 import { explicarMontoInvalido, parsearMonto } from "@/lib/validacion";
 import { CATEGORIAS_GASTO, type CategoriaGasto, type FilaResumenGastos, type FilaResumenVentas, type Gasto, type Membresia, type Proveedor } from "@/lib/tipos";
 import GastosAvanzados from "@/components/GastosAvanzados";
-import { BotonAccion, Campo, EncabezadoHoja, Fichas, Hoja, PieHoja, Segmentado } from "@/components/ui";
+import { BotonAccion, Campo, EncabezadoHoja, Fichas, Hoja, PieHoja } from "@/components/ui";
 
 interface Props { yo: Membresia }
 
 const etiqueta = (c: CategoriaGasto) => CATEGORIAS_GASTO.find((x) => x.valor === c)?.etiqueta ?? c;
 
 export default function Gastos({ yo }: Props) {
-  const [periodo, setPeriodo] = useState<Periodo>("mes");
+  const [sel, setSel] = useState<Seleccion>({ periodo: "mes", offset: 0 });
   const [gastos, setGastos] = useState<Gasto[]>([]);
   const [paraLocal, setParaLocal] = useState(0);
   const [totalGastos, setTotalGastos] = useState(0);
@@ -35,7 +36,7 @@ export default function Gastos({ yo }: Props) {
 
   useEffect(() => {
     let vivo = true;
-    const { desde, hasta } = rangoPeriodo(periodo);
+    const { desde, hasta } = rangoPeriodo(sel.periodo, anclaDe(sel.periodo, sel.offset));
     const sb = getSupabase();
     void Promise.all([
       sb.from("expenses")
@@ -58,7 +59,7 @@ export default function Gastos({ yo }: Props) {
       setCargando(false);
     });
     return () => { vivo = false; };
-  }, [periodo, version, yo.business_id]);
+  }, [sel, version, yo.business_id]);
 
   // Carga los gastos recurrentes que correspondan al mes (no duplica) y trae los proveedores.
   useEffect(() => {
@@ -107,8 +108,7 @@ export default function Gastos({ yo }: Props) {
     <section className="flex flex-col gap-5">
       <BotonAccion texto="Cargar gasto" onClick={() => setCargarGasto(true)} />
 
-      <Segmentado etiqueta="Período" valor={periodo} onCambio={(p) => { setCargando(true); setPeriodo(p); }}
-        opciones={[{ valor: "hoy", texto: "Hoy" }, { valor: "semana", texto: "Esta semana" }, { valor: "mes", texto: "Mes" }]} />
+      <SelectorPeriodo valor={sel} onCambio={(n) => { setCargando(true); setSel(n); }} soloPeriodos={["hoy", "semana", "mes"]} />
 
       {cargarGasto && (
         <Hoja titulo="Cargar un gasto" onCerrar={() => setCargarGasto(false)}>

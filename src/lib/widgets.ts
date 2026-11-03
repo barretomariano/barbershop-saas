@@ -7,7 +7,7 @@ import type { ModuloNegocio, Rol } from "./tipos";
 // opcionales elegidos (public.user_widgets.layout), con ids como "inicio:medios_pago".
 export type IdWidget =
   | "ventas" | "ganancia" | "metas" | "por_cobrar" | "turnos_hoy"
-  | "por_servicio" | "medios_pago" | "por_barbero" | "comision" | "alertas" | "ticket" | "gastos_cat" | "desglose" | "impulso"
+  | "por_servicio" | "medios_pago" | "por_barbero" | "cobros" | "alertas" | "ticket" | "gastos_cat" | "desglose" | "impulso"
   | "resumen_mes" | "tendencia" | "horarios" | "recurrencia" | "rentabilidad" | "flujo" | "desempeno";
 
 export type Zona = "inicio" | "resumen";
@@ -31,13 +31,14 @@ const GESTION: Rol[] = ["OWNER", "MANAGER"];
 // El orden de este catálogo es el orden en pantalla.
 export const CATALOGO: DefWidget[] = [
   { id: "resumen_mes", titulo: "Tu mes", descripcion: "Los últimos meses y cómo viene este contra el anterior.", roles: TODOS, tamano: "l", zonas: { inicio: "fijo" } },
+  { id: "cobros", titulo: "Cobros", descripcion: "Cuánto hiciste, qué falta cobrar y los pedidos pendientes.", roles: TODOS, tamano: "l", zonas: { inicio: "fijo" } },
   { id: "ventas", titulo: "Ventas", descripcion: "Total vendido y comparación con el período anterior.", roles: TODOS, tamano: "l", zonas: { inicio: "fijo", resumen: "fijo" } },
   { id: "ganancia", titulo: "Ganancia", descripcion: "Lo que te queda a vos o al local.", roles: TODOS, tamano: "l", zonas: { inicio: "fijo", resumen: "fijo" } },
   { id: "impulso", titulo: "Tu impulso", descripcion: "Cuánto falta para tu meta o tu mejor día.", roles: TODOS, tamano: "l", zonas: { inicio: "fijo" } },
   { id: "tendencia", titulo: "Ventas en el tiempo", descripcion: "Gráfico del período contra el anterior.", roles: TODOS, tamano: "l", zonas: { resumen: "fijo" } },
   { id: "por_cobrar", titulo: "Por cobrar", descripcion: "Turnos terminados que faltan cobrar.", roles: TODOS, modulo: "AGENDA", tamano: "s", zonas: { inicio: "fijo" } },
   { id: "turnos_hoy", titulo: "Turnos de hoy", descripcion: "Los turnos del día en orden.", roles: TODOS, modulo: "AGENDA", tamano: "l", zonas: { inicio: "fijo" } },
-  { id: "alertas", titulo: "Alertas", descripcion: "Presupuestos, caja sin cerrar y meta.", roles: GESTION, tamano: "l", zonas: { inicio: "fijo", resumen: "opcional" } },
+  { id: "alertas", titulo: "Alertas", descripcion: "Presupuestos y meta del mes.", roles: GESTION, tamano: "l", zonas: { inicio: "fijo", resumen: "opcional" } },
   { id: "metas", titulo: "Meta del mes", descripcion: "Avance de la meta de ventas.", roles: TODOS, tamano: "s", zonas: { inicio: "opcional", resumen: "fijo" } },
   { id: "ticket", titulo: "Ticket promedio", descripcion: "Cuánto deja cada venta en promedio.", roles: TODOS, tamano: "s", zonas: { inicio: "opcional", resumen: "fijo" } },
   { id: "desglose", titulo: "Del bruto al neto", descripcion: "Cómo se llega de lo vendido a lo que queda en el local.", roles: GESTION, tamano: "l", zonas: { resumen: "fijo" } },
@@ -49,7 +50,6 @@ export const CATALOGO: DefWidget[] = [
   { id: "horarios", titulo: "Horarios con más movimiento", descripcion: "Mapa de días y horas con más ventas.", roles: TODOS, tamano: "l", zonas: { resumen: "fijo", inicio: "opcional" } },
   { id: "recurrencia", titulo: "Clientes que vuelven", descripcion: "Cuántos clientes repiten y cada cuánto vuelven.", roles: TODOS, modulo: "CLIENTES", tamano: "l", zonas: { resumen: "fijo", inicio: "opcional" } },
   { id: "medios_pago", titulo: "Medios de pago", descripcion: "Cómo pagan los clientes.", roles: TODOS, tamano: "s", zonas: { inicio: "opcional", resumen: "fijo" } },
-  { id: "comision", titulo: "Comisiones por pagar", descripcion: "Lo que falta liquidar (a cada barbero, lo suyo).", roles: TODOS, tamano: "s", zonas: { inicio: "opcional", resumen: "opcional" } },
   { id: "gastos_cat", titulo: "Gastos por categoría", descripcion: "En qué se va la plata del local.", roles: GESTION, tamano: "l", zonas: { resumen: "opcional" } },
 ];
 

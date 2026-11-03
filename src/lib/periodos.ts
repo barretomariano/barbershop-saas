@@ -85,3 +85,69 @@ export function diasDelMes(ahora: Date = new Date()): { dia: number; total: numb
   const l = new Date(ahora.getTime() + OFFSET_AR);
   return { dia: l.getUTCDate(), total: new Date(Date.UTC(l.getUTCFullYear(), l.getUTCMonth() + 1, 0)).getUTCDate() };
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// Navegar por períodos pasados. "offset" = cuántos períodos hacia atrás (0 = el actual, 1 = el anterior...).
+// Para un período pasado se devuelve una "ancla": el último minuto de ese período. Todas las funciones que ya
+// reciben "ahora" (rangoPeriodo, rangoAnterior, planSerie, hoyAR, mesActual...) la tratan como si el período
+// recién hubiera terminado, así el mismo código sirve para el actual y para cualquiera pasado.
+const MESES_LARGO = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+const MESES_CORTO = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+const DIAS_SEMANA = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+const MS_DIA = 86_400_000;
+
+export function anclaDe(periodo: Periodo, offset: number, ahora: Date = new Date()): Date {
+  if (offset <= 0) return ahora;
+  const l = new Date(ahora.getTime() + OFFSET_AR);
+  let finLocal: number; // inicio (hora local argentina, expresado en UTC) del período siguiente al elegido
+  if (periodo === "hoy") finLocal = Date.UTC(l.getUTCFullYear(), l.getUTCMonth(), l.getUTCDate() - offset + 1);
+  else if (periodo === "semana") finLocal = Date.UTC(l.getUTCFullYear(), l.getUTCMonth(), l.getUTCDate() - diasDesdeLunes(ahora) - 7 * (offset - 1));
+  else if (periodo === "mes") finLocal = Date.UTC(l.getUTCFullYear(), l.getUTCMonth() - offset + 1, 1);
+  else finLocal = Date.UTC(l.getUTCFullYear() - offset + 1, 0, 1);
+  return new Date(finLocal - OFFSET_AR - 60_000);
+}
+
+// Nombre del período para mostrar: "Hoy", "Ayer", "Mié 28 oct", "Esta semana", "26 oct – 1 nov", "Octubre 2026", "2025".
+export function etiquetaPeriodo(periodo: Periodo, offset: number, ahora: Date = new Date()): string {
+  const ancla = anclaDe(periodo, offset, ahora);
+  const l = new Date(ancla.getTime() + OFFSET_AR);
+  if (periodo === "hoy") {
+    if (offset === 0) return "Hoy";
+    if (offset === 1) return "Ayer";
+    return `${DIAS_SEMANA[l.getUTCDay()].slice(0, 3).replace(/^./, (c) => c.toUpperCase())} ${l.getUTCDate()} ${MESES_CORTO[l.getUTCMonth()]}`;
+  }
+  if (periodo === "semana") {
+    if (offset === 0) return "Esta semana";
+    if (offset === 1) return "Semana pasada";
+    const dom = l; // el ancla cae en el domingo
+    const lun = new Date(Date.UTC(dom.getUTCFullYear(), dom.getUTCMonth(), dom.getUTCDate() - 6));
+    return `${lun.getUTCDate()} ${MESES_CORTO[lun.getUTCMonth()]} – ${dom.getUTCDate()} ${MESES_CORTO[dom.getUTCMonth()]}`;
+  }
+  if (periodo === "mes") return `${MESES_LARGO[l.getUTCMonth()]} ${l.getUTCFullYear()}`;
+  return String(l.getUTCFullYear());
+}
+
+// Lista para saltar directo a un mes o año: [{ offset, texto }], del actual hacia atrás.
+export function opcionesDeSalto(periodo: "mes" | "anio", ahora: Date = new Date()): { offset: number; texto: string }[] {
+  const cuantos = periodo === "mes" ? 36 : 6;
+  return Array.from({ length: cuantos }, (_, offset) => ({ offset, texto: etiquetaPeriodo(periodo, offset, ahora) }));
+}
+
+// Fechas AAAA-MM-DD de inicio y fin (inclusive) del período elegido, para las consultas por día.
+export function diasDelPeriodo(periodo: Periodo, offset: number, ahora: Date = new Date()): { desde: string; hasta: string } {
+  const r = rangoPeriodo(periodo, anclaDe(periodo, offset, ahora));
+  const l = (iso: string) => new Date(new Date(iso).getTime() + OFFSET_AR);
+  const desde = l(r.desde).toISOString().slice(0, 10);
+  const hastaExcl = l(r.hasta).getTime(); // inicio del período siguiente (o ahora+1min en el actual)
+  const hasta = offset <= 0 ? hoyAR(ahora) : new Date(hastaExcl - MS_DIA).toISOString().slice(0, 10);
+  return { desde, hasta };
+}
+
+// Frase para los textos de un período PASADO ("en octubre 2026", "ayer", "la semana pasada"). Vacío si es el actual.
+export function rotuloPasado(periodo: Periodo, offset: number, ahora: Date = new Date()): string | undefined {
+  if (offset <= 0) return undefined;
+  const e = etiquetaPeriodo(periodo, offset, ahora);
+  if (periodo === "hoy") return offset === 1 ? "ayer" : `el ${e.toLowerCase()}`;
+  if (periodo === "semana") return offset === 1 ? "la semana pasada" : `la semana del ${e}`;
+  return `en ${e.toLowerCase()}`;
+}

@@ -92,7 +92,7 @@ export function EncabezadoHoja({ titulo, detalle, onCerrar }: { titulo: string; 
 }
 
 export function Segmentado<T extends string>({ opciones, valor, onCambio, etiqueta }: {
-  opciones: { valor: T; texto: string }[]; valor: T; onCambio: (v: T) => void; etiqueta: string;
+  opciones: { valor: T; texto: ReactNode }[]; valor: T; onCambio: (v: T) => void; etiqueta: string;
 }) {
   return (
     <div className="segmentado" role="group" aria-label={etiqueta}>

@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { getSupabase } from "@/lib/supabase";
 import { formatearARS } from "@/lib/dinero";
-import { diasDelMes, hoyAR, mesActual, rangoAnterior, rangoPeriodo, type Periodo } from "@/lib/periodos";
+import { anclaDe, diasDelMes, hoyAR, mesActual, rangoAnterior, rangoPeriodo, rotuloPasado, type Periodo } from "@/lib/periodos";
 import {
-  CATEGORIAS_GASTO, MEDIOS_PAGO, type FilaPendiente, type FilaResumenGastos, type FilaResumenServicio, type FilaResumenVentas,
+  CATEGORIAS_GASTO, MEDIOS_PAGO, type FilaResumenGastos, type FilaResumenServicio, type FilaResumenVentas,
   type FilaDia, type Membresia, type ModuloNegocio, type Presupuesto, type Turno,
 } from "@/lib/tipos";
 import { alertasDePresupuesto } from "@/lib/gestion";
@@ -20,9 +20,10 @@ import type { Destino } from "@/lib/navegacion";
 import { Anillo, Cargando, EncabezadoHoja, Hoja, Icono } from "@/components/ui";
 import { Barra, BarraMeta, Tarjeta } from "@/components/capsulas";
 import { Desempeno, Flujo, Horarios, Recurrencia, Rentabilidad, ResumenMes, Tendencia, type VProps } from "@/components/widgetsVisuales";
+import WidgetCobros from "@/components/WidgetCobros";
 
 interface Props {
-  zona: Zona; periodo: Periodo; yo: Membresia; equipo: Membresia[]; modulos: ModuloNegocio[]; irA: (d: Destino) => void; refresco?: number;
+  zona: Zona; periodo: Periodo; offset?: number; yo: Membresia; equipo: Membresia[]; modulos: ModuloNegocio[]; irA: (d: Destino) => void; refresco?: number;
 }
 
 interface Datos {
@@ -35,10 +36,8 @@ interface Datos {
   meta: number | null;
   turnosHoy: Turno[];
   porCerrar: Turno[];
-  pendiente: FilaPendiente[];
   gastosMes: FilaResumenGastos[];
   presupuestos: Presupuesto[];
-  cajaAyerSinCerrar: boolean;
   ahora: number; // instante en que se cargaron los datos
   serie: FilaDia[]; // ventas por día de los últimos 90 días (para el impulso)
 }
@@ -48,14 +47,15 @@ const COMPARA: Record<Periodo, string> = { hoy: "que ayer", semana: "que la sema
 const NOMBRE: Record<Periodo, string> = { hoy: "hoy", semana: "esta semana", mes: "este mes", anio: "este año" };
 const COLORES = ["var(--acento-vivo)", "var(--par-vivo)", "var(--ok)", "color-mix(in srgb, var(--acento-vivo) 45%, var(--sup-3))", "var(--suave)"];
 
-function textoComparacion(v: Variacion, p: Periodo): string {
+function textoComparacion(v: Variacion, p: Periodo, pasado: boolean): string {
+  const contra = pasado ? "que el período anterior" : COMPARA[p];
   if (v.direccion === "sin-base") return "Sin datos para comparar";
-  if (v.direccion === "igual") return `Igual ${COMPARA[p]}`;
+  if (v.direccion === "igual") return `Igual ${contra}`;
   const pct = v.pct ?? 0;
-  return `${pct > 0 ? "+" : ""}${pct}% ${pct > 0 ? "más" : "menos"} ${COMPARA[p]}`;
+  return `${pct > 0 ? "+" : ""}${pct}% ${pct > 0 ? "más" : "menos"} ${contra}`;
 }
 
-export default function Tablero({ zona, periodo, yo, equipo, modulos, irA, refresco = 0 }: Props) {
+export default function Tablero({ zona, periodo, offset = 0, yo, equipo, modulos, irA, refresco = 0 }: Props) {
   const gestion = yo.role !== "BARBER";
   const hayAgenda = modulos.includes("AGENDA");
   const [datos, setDatos] = useState<Datos | null>(null);
@@ -77,13 +77,13 @@ export default function Tablero({ zona, periodo, yo, equipo, modulos, irA, refre
 
   useEffect(() => {
     let vivo = true;
-    void cargarDatos(yo, periodo, gestion, hayAgenda, zona === "inicio").then((r) => {
+    void cargarDatos(yo, periodo, offset, gestion, hayAgenda, zona === "inicio").then((r) => {
       if (!vivo) return;
       setError(r.error ? "No se pudieron cargar algunos datos." : null);
       setDatos(r.datos);
     });
     return () => { vivo = false; };
-  }, [yo, periodo, gestion, hayAgenda, zona, refresco]);
+  }, [yo, periodo, offset, gestion, hayAgenda, zona, refresco]);
 
   // Si la persona nunca eligió nada con el formato nuevo, se muestran los opcionales por defecto.
   const elegidos: IdWidget[] = crudo === undefined || !tieneFormatoNuevo(crudo)
@@ -112,7 +112,7 @@ export default function Tablero({ zona, periodo, yo, equipo, modulos, irA, refre
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       <div className="tablero">
         {acomodar(ids).map(({ id, ancho }) => (
-          <Widget key={id} id={id} ancho={ancho} zona={zona} yo={yo} gestion={gestion} periodo={periodo} datos={datos} nombre={nombre} irA={irA} version={refresco} />
+          <Widget key={id} id={id} ancho={ancho} zona={zona} yo={yo} gestion={gestion} periodo={periodo} offset={offset} datos={datos} nombre={nombre} irA={irA} version={refresco} />
         ))}
       </div>
 
@@ -147,15 +147,19 @@ export default function Tablero({ zona, periodo, yo, equipo, modulos, irA, refre
   );
 }
 
-interface WProps { id: IdWidget; ancho: 1 | 2; zona: Zona; yo: Membresia; gestion: boolean; periodo: Periodo; datos: Datos; nombre: (id: string) => string; irA: (d: Destino) => void; version: number }
+interface WProps { id: IdWidget; ancho: 1 | 2; zona: Zona; yo: Membresia; gestion: boolean; periodo: Periodo; offset: number; datos: Datos; nombre: (id: string) => string; irA: (d: Destino) => void; version: number }
 
 const VISUALES: Partial<Record<IdWidget, (p: VProps) => React.ReactElement>> = {
-  resumen_mes: ResumenMes, tendencia: Tendencia, horarios: Horarios, recurrencia: Recurrencia, rentabilidad: Rentabilidad, flujo: Flujo, desempeno: Desempeno,
+  resumen_mes: ResumenMes, cobros: WidgetCobros, tendencia: Tendencia, horarios: Horarios, recurrencia: Recurrencia, rentabilidad: Rentabilidad, flujo: Flujo, desempeno: Desempeno,
 };
 
-function Widget({ id, ancho, zona, yo, gestion, periodo, datos, nombre, irA, version }: WProps) {
+function Widget({ id, ancho, zona, yo, gestion, periodo, offset, datos, nombre, irA, version }: WProps) {
+  const pasado = zona === "resumen" && offset > 0;
+  const rotulo = pasado ? rotuloPasado(periodo, offset) : undefined;
+  const ancla = pasado ? anclaDe(periodo, offset) : undefined;
+  const NOM = rotulo ?? NOMBRE[periodo];
   const Visual = VISUALES[id];
-  if (Visual) return <Visual yo={yo} gestion={gestion} periodo={zona === "inicio" ? "mes" : periodo} ancho={ancho} version={version} nombre={nombre} irA={irA} />;
+  if (Visual) return <Visual yo={yo} gestion={gestion} periodo={zona === "inicio" ? "mes" : periodo} ancho={ancho} version={version} nombre={nombre} irA={irA} ancla={ancla} rotulo={rotulo} />;
 
   const vendido = suma(datos.actual, "vendido");
   const cantidad = suma(datos.actual, "cantidad");
@@ -170,7 +174,7 @@ function Widget({ id, ancho, zona, yo, gestion, periodo, datos, nombre, irA, ver
       <Tarjeta titulo={titulo} ancho={ancho} tono="color" ir={() => irA("ventas")}>
         <p className="monto">{formatearARS(vendido)}</p>
         <p className="texto-suave text-sm">{cantidad} {cantidad === 1 ? "venta" : "ventas"}{cantidad > 0 ? ` · ${formatearARS(Math.round(vendido / cantidad))} cada una` : ""}</p>
-        <span className="pill" data-signo={v.direccion}>{textoComparacion(v, periodo)}</span>
+        <span className="pill" data-signo={v.direccion}>{textoComparacion(v, periodo, pasado)}</span>
       </Tarjeta>
     );
   }
@@ -214,7 +218,7 @@ function Widget({ id, ancho, zona, yo, gestion, periodo, datos, nombre, irA, ver
       return (
         <Tarjeta titulo="Tu ganancia" ancho={ancho} tono="tinta" ir={() => irA("ventas")}>
           <p className="monto">{formatearARS(paraBarbero)}</p>
-          <p className="texto-suave text-xs">De {formatearARS(vendido)} vendidos {NOMBRE[periodo]}</p>
+          <p className="texto-suave text-xs">De {formatearARS(vendido)} vendidos {NOM}</p>
         </Tarjeta>
       );
     }
@@ -249,14 +253,14 @@ function Widget({ id, ancho, zona, yo, gestion, periodo, datos, nombre, irA, ver
           <span className="font-semibold">Neta del local</span>
           <span className="monto text-2xl" style={{ color: g.neta < 0 ? "var(--peligro)" : "var(--ok)" }}>{formatearARS(g.neta)}</span>
         </div>
-        {!g.incluyeFijos && <p className="texto-suave text-xs">Alquileres de silla y sueldos fijos se suman solo en “Este mes”.</p>}
+        {!g.incluyeFijos && <p className="texto-suave text-xs">Alquileres de silla y sueldos fijos se suman solo al mirar un mes completo.</p>}
       </Tarjeta>
     );
   }
 
   if (id === "metas") {
     const mesVendido = suma(datos.mes, "vendido");
-    const { dia, total } = diasDelMes();
+    const { dia, total } = diasDelMes(ancla);
     const destino: Destino = yo.role === "OWNER" ? "metas" : "ventas";
     if (!datos.meta) {
       return (
@@ -314,7 +318,7 @@ function Widget({ id, ancho, zona, yo, gestion, periodo, datos, nombre, irA, ver
     return (
       <Tarjeta titulo="Ticket promedio" ancho={ancho} ir={() => irA("ventas")}>
         <p className="monto text-3xl">{cantidad ? formatearARS(Math.round(vendido / cantidad)) : "—"}</p>
-        <p className="texto-suave text-xs">{cantidad} {cantidad === 1 ? "venta" : "ventas"} {NOMBRE[periodo]}</p>
+        <p className="texto-suave text-xs">{cantidad} {cantidad === 1 ? "venta" : "ventas"} {NOM}</p>
       </Tarjeta>
     );
   }
@@ -323,7 +327,7 @@ function Widget({ id, ancho, zona, yo, gestion, periodo, datos, nombre, irA, ver
     const max = Math.max(1, ...datos.servicios.map((s) => s.vendido));
     return (
       <Tarjeta titulo="Ventas por servicio" ancho={ancho} ir={() => irA("reportes")}>
-        {datos.servicios.length === 0 ? <p className="texto-suave text-sm">Sin ventas {NOMBRE[periodo]}.</p> : (
+        {datos.servicios.length === 0 ? <p className="texto-suave text-sm">Sin ventas {NOM}.</p> : (
           <ul className="flex flex-col gap-3 text-sm">
             {datos.servicios.slice(0, 6).map((s) => (
               <li key={s.service_name} className="flex flex-col gap-1">
@@ -342,7 +346,7 @@ function Widget({ id, ancho, zona, yo, gestion, periodo, datos, nombre, irA, ver
       .filter((m) => m.total > 0).sort((a, b) => b.total - a.total);
     return (
       <Tarjeta titulo="Medios de pago" ancho={ancho} ir={() => irA("reportes")}>
-        {filas.length === 0 ? <p className="texto-suave text-sm">Sin ventas {NOMBRE[periodo]}.</p> : (
+        {filas.length === 0 ? <p className="texto-suave text-sm">Sin ventas {NOM}.</p> : (
           <>
             <div className="barra-apilada" aria-hidden="true">
               {filas.map((m, i) => <span key={m.valor} style={{ width: `${(m.total / vendido) * 100}%`, background: COLORES[i % COLORES.length] }} />)}
@@ -361,21 +365,11 @@ function Widget({ id, ancho, zona, yo, gestion, periodo, datos, nombre, irA, ver
     );
   }
 
-  if (id === "comision") {
-    const aPagar = datos.pendiente.reduce((t, f) => t + f.a_pagar, 0);
-    return (
-      <Tarjeta titulo={gestion ? "Comisiones por pagar" : "Tu comisión por cobrar"} ancho={ancho} ir={() => irA(gestion ? "caja" : "ventas")}>
-        <p className="monto text-3xl">{formatearARS(aPagar)}</p>
-        <p className="texto-suave text-xs">{aPagar === 0 ? "Nada pendiente de liquidar" : `${datos.pendiente.reduce((t, f) => t + f.cantidad, 0)} ventas sin liquidar`}</p>
-      </Tarjeta>
-    );
-  }
-
   if (id === "gastos_cat") {
     const max = Math.max(1, ...datos.gastos.map((g) => g.total));
     return (
       <Tarjeta titulo="Gastos por categoría" ancho={ancho} ir={() => irA("gastos")}>
-        {datos.gastos.length === 0 ? <p className="texto-suave text-sm">Sin gastos {NOMBRE[periodo]}.</p> : (
+        {datos.gastos.length === 0 ? <p className="texto-suave text-sm">Sin gastos {NOM}.</p> : (
           <ul className="flex flex-col gap-3 text-sm">
             {datos.gastos.map((g) => (
               <li key={g.category} className="flex flex-col gap-1">
@@ -395,16 +389,15 @@ function Widget({ id, ancho, zona, yo, gestion, periodo, datos, nombre, irA, ver
     for (const a of alertasDePresupuesto(datos.gastosMes, datos.presupuestos)) {
       lista.push({ ir: "gastos", grave: a.nivel === "excedido", texto: `${a.nivel === "excedido" ? "Te pasaste del presupuesto" : "Cerca del límite"} en ${etiquetaCat(a.categoria)}: ${formatearARS(a.gastado)} de ${formatearARS(a.presupuesto)}.` });
     }
-    if (datos.cajaAyerSinCerrar) lista.push({ ir: "caja", grave: false, texto: "La caja de ayer no se cerró." });
     if (datos.meta) {
-      const { dia, total } = diasDelMes();
+      const { dia, total } = diasDelMes(ancla);
       const p = progresoMeta(suma(datos.mes, "vendido"), datos.meta, dia, total);
       if (!p.alcanzada && dia >= 7 && p.proyeccion < datos.meta) lista.push({ ir: "metas", grave: false, texto: `A este ritmo cerrarías el mes en ${formatearARS(p.proyeccion)}, por debajo de la meta.` });
     }
     // En el inicio solo molesta si hay algo que atender.
     if (lista.length === 0 && zona === "inicio") return null;
     return (
-      <Tarjeta titulo="Alertas" ancho={ancho} ir={() => irA(lista[0]?.ir ?? "caja")}>
+      <Tarjeta titulo="Alertas" ancho={ancho} ir={() => irA(lista[0]?.ir ?? "gastos")}>
         {lista.length === 0 ? <p className="texto-suave text-sm">Todo en orden.</p> : (
           <ul className="flex flex-col gap-2 text-sm">
             {lista.map((a) => <li key={a.texto}><button className={`text-left ${a.grave ? "text-red-600" : ""}`} onClick={(ev) => { ev.stopPropagation(); irA(a.ir); }}>{a.texto}</button></li>)}
@@ -423,7 +416,7 @@ function Widget({ id, ancho, zona, yo, gestion, periodo, datos, nombre, irA, ver
     .sort((a, b) => b.total - a.total);
   return (
     <Tarjeta titulo="Por barbero" ancho={ancho} ir={() => irA("ventas")}>
-      {filas.length === 0 ? <p className="texto-suave text-sm">Sin ventas {NOMBRE[periodo]}.</p> : (
+      {filas.length === 0 ? <p className="texto-suave text-sm">Sin ventas {NOM}.</p> : (
         <ol className="flex flex-col gap-3">
           {filas.map((f, i) => (
             <li key={f.mid} className="flex items-center gap-3">
@@ -450,12 +443,13 @@ function Linea({ texto, valor, fuerte, sub }: { texto: string; valor: number; fu
   );
 }
 
-async function cargarDatos(yo: Membresia, periodo: Periodo, gestion: boolean, hayAgenda: boolean, conSerie: boolean): Promise<{ datos: Datos; error: boolean }> {
+async function cargarDatos(yo: Membresia, periodo: Periodo, offset: number, gestion: boolean, hayAgenda: boolean, conSerie: boolean): Promise<{ datos: Datos; error: boolean }> {
   const sb = getSupabase();
   const neg = yo.business_id;
-  const r = rangoPeriodo(periodo);
-  const ant = rangoAnterior(periodo);
-  const rMes = rangoPeriodo("mes");
+  const ancla = anclaDe(periodo, offset);
+  const r = rangoPeriodo(periodo, ancla);
+  const ant = rangoAnterior(periodo, ancla);
+  const rMes = rangoPeriodo("mes", ancla);
   const ahoraIso = new Date().toISOString();
   const dia = rangoDia(hoyAR());
   const vacio = Promise.resolve({ data: [], error: null });
@@ -465,16 +459,15 @@ async function cargarDatos(yo: Membresia, periodo: Periodo, gestion: boolean, ha
     return (res.data as T[]) ?? [];
   };
 
-  const ayer = rangoDia(sumarDias(hoyAR(), -1));
   const hace90 = rangoDia(sumarDias(hoyAR(), -90));
-  const [a, b, m, g, s, f, meta, hoy, cerrar, pend, gMes, pres, cierreAyer, ventasAyer, serieRes] = await Promise.all([
+  const [a, b, m, g, s, f, meta, hoy, cerrar, gMes, pres, serieRes] = await Promise.all([
     sb.rpc("resumen_ventas", { p_business: neg, p_desde: r.desde, p_hasta: r.hasta }),
     sb.rpc("resumen_ventas", { p_business: neg, p_desde: ant.desde, p_hasta: ant.hasta }),
     sb.rpc("resumen_ventas", { p_business: neg, p_desde: rMes.desde, p_hasta: rMes.hasta }),
     gestion ? sb.rpc("resumen_gastos", { p_business: neg, p_desde: r.desde, p_hasta: r.hasta }) : vacio,
     sb.rpc("resumen_por_servicio", { p_business: neg, p_desde: r.desde, p_hasta: r.hasta }),
     gestion ? sb.rpc("fijos_mensuales", { p_business: neg }) : vacio,
-    sb.from("sales_goals").select("barber_membership_id,amount").eq("business_id", neg).eq("month", mesActual()),
+    sb.from("sales_goals").select("barber_membership_id,amount").eq("business_id", neg).eq("month", mesActual(ancla)),
     hayAgenda && dia
       ? sb.from("appointments").select("*, clients(name,phone)").eq("business_id", neg).gte("starts_at", dia.desde).lt("starts_at", dia.hasta).order("starts_at")
       : vacio,
@@ -482,11 +475,8 @@ async function cargarDatos(yo: Membresia, periodo: Periodo, gestion: boolean, ha
       ? sb.from("appointments").select("*, clients(name,phone)").eq("business_id", neg)
           .or(`status.eq.DONE,and(status.eq.SCHEDULED,ends_at.lte.${ahoraIso})`).order("starts_at").limit(50)
       : vacio,
-    sb.rpc("pendiente_liquidacion", { p_business: neg, p_upto: hoyAR() }),
     gestion ? sb.rpc("resumen_gastos", { p_business: neg, p_desde: rMes.desde, p_hasta: rMes.hasta }) : vacio,
-    gestion ? sb.from("budgets").select("category,month,amount").eq("business_id", neg).eq("month", mesActual()) : vacio,
-    gestion ? sb.from("cash_closings").select("id").eq("business_id", neg).eq("closing_date", sumarDias(hoyAR(), -1)) : vacio,
-    gestion && ayer ? sb.rpc("resumen_ventas", { p_business: neg, p_desde: ayer.desde, p_hasta: ayer.hasta }) : vacio,
+    gestion ? sb.from("budgets").select("category,month,amount").eq("business_id", neg).eq("month", mesActual(ancla)) : vacio,
     conSerie && hace90
       ? sb.rpc("serie_diaria", { p_business: neg, p_desde: hace90.desde, p_hasta: new Date(Date.now() + 60_000).toISOString() })
       : vacio,
@@ -505,9 +495,8 @@ async function cargarDatos(yo: Membresia, periodo: Periodo, gestion: boolean, ha
       gastos: sacar<FilaResumenGastos>(g), servicios: sacar<FilaResumenServicio>(s),
       fijos: { alquiler: Number(fijos?.alquiler_silla ?? 0), sueldos: Number(fijos?.sueldos ?? 0) },
       meta: suya?.amount ?? null, turnosHoy, porCerrar,
-      pendiente: sacar<FilaPendiente>(pend), gastosMes: sacar<FilaResumenGastos>(gMes), presupuestos: sacar<Presupuesto>(pres),
+      gastosMes: sacar<FilaResumenGastos>(gMes), presupuestos: sacar<Presupuesto>(pres),
       ahora: Date.now(), serie: sacar<FilaDia>(serieRes).map((f) => ({ ...f, dia: String(f.dia), vendido: Number(f.vendido), cantidad: Number(f.cantidad) })),
-      cajaAyerSinCerrar: gestion && sacar<{ id: string }>(cierreAyer).length === 0 && sacar<FilaResumenVentas>(ventasAyer).length > 0,
     },
   };
 }

@@ -98,3 +98,20 @@ describe("modo demo: cliente de ejemplo", () => {
     expect(Array.isArray((await sb.rpc("serie_gastos", args)).data)).toBe(true);
   });
 });
+
+describe("demo: cobros por día", () => {
+  it("lista los días con su estado, acepta un pedido y lo deja cobrado", async () => {
+    const sb = crearClienteDemo();
+    const hoy = hoyAR();
+    const desde = new Date(Date.now() - 6 * 86_400_000).toISOString().slice(0, 10);
+    const { data } = await sb.rpc("dias_cobro", { p_business: DEMO_NEGOCIO_ID, p_desde: desde, p_hasta: hoy });
+    const filas = data as { barber_membership_id: string; dia: string; estado: string; comision: number }[];
+    const pedido = filas.find((f) => f.estado === "REQUESTED");
+    expect(pedido).toBeDefined();
+    const r = await sb.rpc("decide_payout", { p_business: DEMO_NEGOCIO_ID, p_membership: pedido!.barber_membership_id, p_days: [pedido!.dia], p_accept: true, p_reason: null });
+    expect(r.error).toBeNull();
+    expect(Number(r.data)).toBe(pedido!.comision);
+    const otra = (await sb.rpc("dias_cobro", { p_business: DEMO_NEGOCIO_ID, p_desde: desde, p_hasta: hoy })).data as { dia: string; estado: string; barber_membership_id: string }[];
+    expect(otra.find((f) => f.dia === pedido!.dia && f.barber_membership_id === pedido!.barber_membership_id)?.estado).toBe("PAID");
+  });
+});

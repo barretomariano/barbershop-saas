@@ -168,12 +168,23 @@ export function crearTablas(ahora: number = Date.now()): Tablas {
     });
   }
 
+  // Cobros por día: un pedido de Lucas esperando al dueño y un día ya cobrado (con su monto).
+  const payout_days: Fila[] = [];
+  {
+    const comDia = (m: string, dia: string) => sales.filter((v) => v.status === "VALID" && v.barber_membership_id === m && hoyAR(new Date(String(v.sold_at))) === dia)
+      .reduce((t, v) => t + Number(v.barber_amount), 0);
+    const dia = (d: number) => hoyAR(new Date(instante(ahora, d, 12)));
+    const hace2 = dia(-2), hace1 = dia(-1);
+    if (comDia("m-lucas", hace2) > 0) payout_days.push({ id: id("pd"), business_id: N, barber_membership_id: "m-lucas", day: hace2, status: "PAID", requested_at: iso(ahora - 40 * 3_600_000), decided_at: iso(ahora - 36 * 3_600_000), decided_by: DEMO_USER_ID, reject_reason: null, day_amount: comDia("m-lucas", hace2), paid_total: comDia("m-lucas", hace2) });
+    if (comDia("m-lucas", hace1) > 0) payout_days.push({ id: id("pd"), business_id: N, barber_membership_id: "m-lucas", day: hace1, status: "REQUESTED", requested_at: iso(ahora - 3 * 3_600_000), decided_at: null, decided_by: null, reject_reason: null, day_amount: null, paid_total: null });
+  }
+
   const mes = hoyAR(new Date(ahora)).slice(0, 8) + "01";
   const prov = (name: string, phone: string): Fila => ({ id: id("p"), business_id: N, name, phone, notes: null, active: true });
   const suppliers = [prov("Distribuidora Capelli", "11 5555-0142"), prov("Barber Supply Argentina", "11 5555-0187"), prov("Limpieza Don Pedro", "11 5555-0120")];
 
   return {
-    memberships, services, clients, sales, appointments, expenses, cash_closings, suppliers,
+    memberships, services, clients, sales, appointments, expenses, cash_closings, payout_days, suppliers,
     businesses: [{ id: N, name: "Black Label Barbershop", plan: "INTERMEDIO", setup_completed_at: iso(ahora - 30 * MS_DIA), accent: null, primary_color: "#D4F51F", secondary_color: "#7C5CFF", slug: "black-label", logo_version: 0 }],
     business_modules: [{ id: "bm-1", business_id: N, module: "AGENDA", enabled: true }, { id: "bm-2", business_id: N, module: "CLIENTES", enabled: true }],
     sales_goals: [{ id: "sg-1", business_id: N, barber_membership_id: null, month: mes, amount: 6500000 }, { id: "sg-2", business_id: N, barber_membership_id: "m-lucas", month: mes, amount: 1800000 }],

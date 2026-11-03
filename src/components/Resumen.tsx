@@ -3,35 +3,35 @@
 import { useCallback, useEffect, useState } from "react";
 import { getSupabase } from "@/lib/supabase";
 import { formatearARS, formatearHora } from "@/lib/dinero";
-import { rangoPeriodo, type Periodo } from "@/lib/periodos";
+import { anclaDe, rangoPeriodo, type Periodo } from "@/lib/periodos";
 import { MEDIOS_PAGO, type FilaResumenVentas, type Membresia, type Venta } from "@/lib/tipos";
-import { Segmentado } from "@/components/ui";
+import SelectorPeriodo, { SELECCION_INICIAL, type Seleccion } from "@/components/SelectorPeriodo";
 
 const MAX_LISTA = 100;
 
 interface Props { yo: Membresia; equipo: Membresia[] }
 
 export default function Resumen({ yo, equipo }: Props) {
-  const [periodo, setPeriodo] = useState<Periodo>("hoy");
+  const [sel, setSel] = useState<Seleccion>(SELECCION_INICIAL);
   const [ventas, setVentas] = useState<Venta[]>([]);
   const [filas, setFilas] = useState<FilaResumenVentas[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const puedeAnular = yo.role !== "BARBER";
+  const puedeAnular = yo.role === "OWNER"; // solo el dueño anula ventas
 
   const [version, setVersion] = useState(0);
   const recargar = useCallback(() => setVersion((v) => v + 1), []);
 
   useEffect(() => {
     let vivo = true;
-    void pedirDatos(periodo, yo.business_id).then(({ ventas: v, filas: f, error: e }) => {
+    void pedirDatos(sel.periodo, sel.offset, yo.business_id).then(({ ventas: v, filas: f, error: e }) => {
       if (!vivo) return;
       if (e) setError("No se pudieron cargar las ventas.");
       else { setError(null); setVentas(v); setFilas(f); }
       setCargando(false);
     });
     return () => { vivo = false; };
-  }, [periodo, version, yo.business_id]);
+  }, [sel, version, yo.business_id]);
 
   // Los totales los calcula la base de datos sobre TODAS las ventas válidas del período.
   const total = filas.reduce((s, f) => s + f.vendido, 0);
@@ -55,8 +55,7 @@ export default function Resumen({ yo, equipo }: Props) {
 
   return (
     <section className="flex flex-col gap-4">
-      <Segmentado etiqueta="Período" valor={periodo} onCambio={(p) => { setCargando(true); setPeriodo(p); }}
-        opciones={[{ valor: "hoy", texto: "Hoy" }, { valor: "semana", texto: "Esta semana" }, { valor: "mes", texto: "Mes" }, { valor: "anio", texto: "Año" }]} />
+      <SelectorPeriodo valor={sel} onCambio={(n) => { setCargando(true); setSel(n); }} />
 
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       {cargando ? <p className="texto-suave">Cargando…</p> : (
@@ -119,8 +118,8 @@ export default function Resumen({ yo, equipo }: Props) {
   );
 }
 
-async function pedirDatos(periodo: Periodo, negocio: string): Promise<{ ventas: Venta[]; filas: FilaResumenVentas[]; error: boolean }> {
-  const { desde, hasta } = rangoPeriodo(periodo);
+async function pedirDatos(periodo: Periodo, offset: number, negocio: string): Promise<{ ventas: Venta[]; filas: FilaResumenVentas[]; error: boolean }> {
+  const { desde, hasta } = rangoPeriodo(periodo, anclaDe(periodo, offset));
   const sb = getSupabase();
   const [lista, resumen] = await Promise.all([
     sb.from("sales")

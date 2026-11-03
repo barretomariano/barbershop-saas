@@ -105,8 +105,11 @@ select pg_temp.esperar('Barbero de B NO puede registrar ventas en A',
 reset role; set role authenticated; select set_config('request.jwt.claim.sub','a0000000-0000-0000-0000-000000000002',false) \gset
 select pg_temp.esperar('Anular sin motivo se rechaza',
   pg_temp.falla($q$select public.cancel_sale((select id from public.sales where amount=8000), '')$q$));
+select pg_temp.esperar('Manager NO puede anular (solo el dueño)',
+  pg_temp.falla($q$select public.cancel_sale((select id from public.sales where amount=8000), 'Error de carga')$q$));
+reset role; set role authenticated; select set_config('request.jwt.claim.sub','a0000000-0000-0000-0000-000000000001',false) \gset
 select public.cancel_sale(:'venta2', 'Error de carga');
-select pg_temp.esperar('Manager anula una venta con motivo',
+select pg_temp.esperar('El dueño anula una venta con motivo',
   pg_temp.n($q$select count(*) from public.sales where amount=8000 and status='CANCELED'$q$) = 1);
 select pg_temp.esperar('No se puede anular dos veces',
   pg_temp.falla($q$select public.cancel_sale((select id from public.sales where amount=8000), 'otra vez')$q$));

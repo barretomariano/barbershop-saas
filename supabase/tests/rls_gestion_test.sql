@@ -118,7 +118,11 @@ select public.register_sale(current_setting('test.j')::uuid, current_setting('te
 
 -- ===== Encargado: caja =====
 reset role; set role authenticated; select set_config('request.jwt.claim.sub','c1000000-0000-0000-0000-000000000002',false) \gset
+select pg_temp.esperar('Encargado NO anula ventas (solo el dueño)',
+  pg_temp.falla($q$select public.cancel_sale(current_setting('test.vanul')::uuid, 'cargada por error')$q$));
+reset role; set role authenticated; select set_config('request.jwt.claim.sub','c1000000-0000-0000-0000-000000000001',false) \gset
 select public.cancel_sale(current_setting('test.vanul')::uuid, 'cargada por error');
+reset role; set role authenticated; select set_config('request.jwt.claim.sub','c1000000-0000-0000-0000-000000000002',false) \gset
 select pg_temp.esperar('Encargado ve proveedores y recurrentes', pg_temp.n('select count(*) from public.suppliers') + pg_temp.n('select count(*) from public.recurring_expenses') = 3);
 select pg_temp.esperar('Encargado ve presupuestos', pg_temp.n('select count(*) from public.budgets') = 1);
 select pg_temp.esperar('Encargado NO define presupuestos',
@@ -198,7 +202,7 @@ select pg_temp.esperar('Un barbero ve en los reportes solo lo suyo (20000)',
 reset role; set role authenticated; select set_config('request.jwt.claim.sub','c1000000-0000-0000-0000-000000000001',false) \gset
 select pg_temp.esperar('Dueño ve la auditoría', pg_temp.n('select count(*) from public.audit_log') > 0);
 select pg_temp.esperar('Se auditó la anulación de la venta (con quien la hizo)',
-  pg_temp.n($q$select count(*) from public.audit_log where entity='sales' and action='UPDATE' and detail->>'status'='CANCELED' and user_id='c1000000-0000-0000-0000-000000000002'$q$) = 1);
+  pg_temp.n($q$select count(*) from public.audit_log where entity='sales' and action='UPDATE' and detail->>'status'='CANCELED' and user_id='c1000000-0000-0000-0000-000000000001'$q$) = 1);
 select pg_temp.esperar('Se auditó el cambio de módulos', pg_temp.n($q$select count(*) from public.audit_log where entity='business_modules'$q$) >= 1);
 select pg_temp.esperar('Se auditó el presupuesto (alta, cambio y baja)', pg_temp.n($q$select count(*) from public.audit_log where entity='budgets'$q$) >= 4);
 select pg_temp.esperar('Se auditó el cierre de caja', pg_temp.n($q$select count(*) from public.audit_log where entity='cash_closings'$q$) = 2);

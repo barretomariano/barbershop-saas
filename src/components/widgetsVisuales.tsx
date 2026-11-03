@@ -13,10 +13,13 @@ import { BarrasDobles, GraficoArea, MapaCalor, TiraMeses } from "@/components/gr
 
 export interface VProps {
   yo: Membresia; gestion: boolean; periodo: Periodo; ancho: 1 | 2; version: number;
+  ancla?: Date;    // período pasado: el último minuto de ese período (ver anclaDe)
+  rotulo?: string; // nombre del período pasado para los textos ("octubre 2026")
   nombre: (id: string) => string; irA: (d: Destino) => void;
 }
 
 const NOMBRE: Record<Periodo, string> = { hoy: "hoy", semana: "esta semana", mes: "este mes", anio: "este año" };
+const nombreDe = (p: Periodo, rotulo?: string) => rotulo ?? NOMBRE[p];
 const peso = (n: number) => formatearARS(Math.round(n));
 
 // Convertidores estables (definidos afuera para no volver a llamar a la base en cada render).
@@ -78,8 +81,9 @@ export function ResumenMes({ yo, gestion, ancho, version, irA }: VProps) {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-function useSeries(periodo: Periodo, yo: Membresia, version: number, nombre: "serie_diaria" | "serie_gastos", conPrevio: boolean) {
-  const plan = useMemo(() => planSerie(periodo), [periodo, version]); // eslint-disable-line react-hooks/exhaustive-deps
+function useSeries(periodo: Periodo, yo: Membresia, version: number, nombre: "serie_diaria" | "serie_gastos", conPrevio: boolean, ancla?: Date) {
+  const marca = ancla?.getTime();
+  const plan = useMemo(() => planSerie(periodo, ancla), [periodo, version, marca]); // eslint-disable-line react-hooks/exhaustive-deps
   const hora = plan.tipo === "hora" && nombre === "serie_diaria";
   const rpcNombre = hora ? "ventas_por_hora" : nombre;
   const conv = hora ? aHora : nombre === "serie_gastos" ? aGasto : aDia;
@@ -91,21 +95,21 @@ function useSeries(periodo: Periodo, yo: Membresia, version: number, nombre: "se
 const comoValor = (hora: boolean, filas: unknown[], campo: "vendido" | "para_local" | "cantidad" = "vendido"): FilaValor[] =>
   hora ? desdeHoras(filas as FilaHora[]) : desdeDias(filas as FilaDia[], campo);
 
-export function Tendencia({ yo, gestion, periodo, ancho, version, irA }: VProps) {
-  const { plan, hora, actual, previo, error } = useSeries(periodo, yo, version, "serie_diaria", true);
+export function Tendencia({ yo, gestion, periodo, ancho, version, irA, ancla, rotulo }: VProps) {
+  const { plan, hora, actual, previo, error } = useSeries(periodo, yo, version, "serie_diaria", true, ancla);
   const titulo = gestion ? "Ventas en el tiempo" : "Tus ventas en el tiempo";
   if (!actual || !previo) return <Cargando titulo={titulo} ancho={ancho} alto={230} />;
   const s = armarSerie(plan, comoValor(hora, actual), comoValor(hora, previo));
   const tope = s.transcurridos;
   const suma = (xs: (number | null)[], n: number) => xs.slice(0, n).reduce<number>((t, v) => t + (v ?? 0), 0);
   const v = variacion(suma(s.actual, tope), suma(s.previo, tope));
-  const contra = { hoy: "que ayer", semana: "que la semana pasada", mes: "que el mes pasado", anio: "que el año pasado" }[periodo];
+  const contra = rotulo ? "que el período anterior" : { hoy: "que ayer", semana: "que la semana pasada", mes: "que el mes pasado", anio: "que el año pasado" }[periodo];
   return (
     <Tarjeta titulo={titulo} ancho={ancho} ir={() => irA("reportes")}>
       {error && <p role="alert" className="text-sm text-red-600">No se pudieron cargar todos los datos.</p>}
       <Pill v={v} texto={textoPct(v, contra)} />
       <GraficoArea etiquetas={s.etiquetas} actual={s.actual} previo={s.previo} formato={peso} etiquetaPrevio="Antes"
-        descripcion={`Ventas ${NOMBRE[periodo]} comparadas con el período anterior`} />
+        descripcion={`Ventas ${nombreDe(periodo, rotulo)} comparadas con el período anterior`} />
     </Tarjeta>
   );
 }
@@ -163,8 +167,9 @@ export function Recurrencia({ yo, gestion, ancho, version, irA }: VProps) {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-export function Rentabilidad({ yo, periodo, ancho, version, nombre, irA }: VProps) {
-  const plan = useMemo(() => planSerie(periodo), [periodo, version]); // eslint-disable-line react-hooks/exhaustive-deps
+export function Rentabilidad({ yo, periodo, ancho, version, nombre, irA, ancla, rotulo }: VProps) {
+  const marca = ancla?.getTime();
+  const plan = useMemo(() => planSerie(periodo, ancla), [periodo, version, marca]); // eslint-disable-line react-hooks/exhaustive-deps
   const args = { p_business: yo.business_id, p_desde: plan.desde, p_hasta: plan.hasta };
   const ventas = useRpc("resumen_ventas", args, aVenta, version);
   const servicios = useRpc("rentabilidad_servicios", args, aRentServicio, version);
@@ -180,9 +185,9 @@ export function Rentabilidad({ yo, periodo, ancho, version, nombre, irA }: VProp
   const maxS = Math.max(1, ...servicios.filas.map((f) => f.para_local));
   return (
     <Tarjeta titulo={titulo} ancho={ancho} ir={() => irA("reportes")}>
-      {vendido === 0 ? <p className="texto-suave text-sm">Sin ventas {NOMBRE[periodo]}.</p> : (
+      {vendido === 0 ? <p className="texto-suave text-sm">Sin ventas {nombreDe(periodo, rotulo)}.</p> : (
         <>
-          <p className="texto-suave text-sm">De cada $100 que se venden {NOMBRE[periodo]}, al local le quedan</p>
+          <p className="texto-suave text-sm">De cada $100 que se venden {nombreDe(periodo, rotulo)}, al local le quedan</p>
           <p className="monto text-[34px] leading-none">${margenPct(vendido, local)} <span className="texto-suave text-sm">({formatearARS(local)})</span></p>
           <p className="titulo-tarjeta mt-2">Aporte de cada barbero al local</p>
           <ul className="flex flex-col gap-3 text-sm">
@@ -209,9 +214,9 @@ export function Rentabilidad({ yo, periodo, ancho, version, nombre, irA }: VProp
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-export function Flujo({ yo, periodo, ancho, version, irA }: VProps) {
-  const ing = useSeries(periodo, yo, version, "serie_diaria", false);
-  const gas = useSeries(periodo, yo, version, "serie_gastos", false);
+export function Flujo({ yo, periodo, ancho, version, irA, ancla, rotulo }: VProps) {
+  const ing = useSeries(periodo, yo, version, "serie_diaria", false, ancla);
+  const gas = useSeries(periodo, yo, version, "serie_gastos", false, ancla);
   const titulo = "Lo que entra y lo que sale";
   // Para "hoy" las ventas vienen por hora y los gastos por día: se comparan los totales.
   const diario = useRpc<FilaDia>("serie_diaria", ing.hora ? { p_business: yo.business_id, p_desde: ing.plan.desde, p_hasta: ing.plan.hasta } : null, aDia, version);
@@ -224,7 +229,7 @@ export function Flujo({ yo, periodo, ancho, version, irA }: VProps) {
   const neto = totalLocal - totalGastos;
   const encabezado = (
     <>
-      <p className="texto-suave text-sm">{periodo === "hoy" ? "Hoy" : `Lo que va ${NOMBRE[periodo]}`}, al local le quedó</p>
+      <p className="texto-suave text-sm">{rotulo ? `${rotulo[0].toUpperCase()}${rotulo.slice(1)}` : periodo === "hoy" ? "Hoy" : `Lo que va ${nombreDe(periodo, rotulo)}`}, al local le quedó</p>
       <p className="monto text-[30px] leading-none" style={{ color: neto < 0 ? "var(--peligro)" : undefined }}>{formatearARS(neto)}</p>
       <p className="texto-suave text-xs">{formatearARS(totalLocal)} de ventas para el local menos {formatearARS(totalGastos)} de gastos.</p>
     </>
@@ -236,14 +241,14 @@ export function Flujo({ yo, periodo, ancho, version, irA }: VProps) {
     <Tarjeta titulo={titulo} ancho={ancho} ir={() => irA("gastos")}>
       {encabezado}
       <BarrasDobles etiquetas={a.etiquetas} a={a.actual} b={b.actual.map((v, i) => (a.actual[i] === null ? null : v))} nombreA="Para el local" nombreB="Gastos" formato={peso}
-        descripcion={`Ingresos del local y gastos ${NOMBRE[periodo]}`} />
+        descripcion={`Ingresos del local y gastos ${nombreDe(periodo, rotulo)}`} />
     </Tarjeta>
   );
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-export function Desempeno({ yo, periodo, ancho, version, irA }: VProps) {
-  const { plan, hora, actual, previo } = useSeries(periodo, yo, version, "serie_diaria", true);
+export function Desempeno({ yo, periodo, ancho, version, irA, ancla, rotulo }: VProps) {
+  const { plan, hora, actual, previo } = useSeries(periodo, yo, version, "serie_diaria", true, ancla);
   const horas = useRpc("ventas_por_hora", { p_business: yo.business_id, p_desde: plan.desde, p_hasta: plan.hasta }, aHora, version);
   const diaria = useRpc<FilaDia>("serie_diaria", hora ? { p_business: yo.business_id, p_desde: plan.desde, p_hasta: plan.hasta } : null, aDia, version);
   const titulo = "Tu rendimiento";
@@ -254,12 +259,12 @@ export function Desempeno({ yo, periodo, ancho, version, irA }: VProps) {
   const v = dPrev ? variacion(d.cortesPorDia, dPrev.cortesPorDia) : null;
   return (
     <Tarjeta titulo={titulo} ancho={ancho} ir={() => irA("ventas")}>
-      {d.cortes === 0 ? <p className="texto-suave text-sm">Sin ventas {NOMBRE[periodo]}.</p> : (
+      {d.cortes === 0 ? <p className="texto-suave text-sm">Sin ventas {nombreDe(periodo, rotulo)}.</p> : (
         <>
           <div className="grid grid-cols-2 gap-2">
             <Dato valor={String(d.cortesPorDia).replace(".", ",")} texto="cortes por día trabajado" extra={v && v.direccion !== "sin-base" ? <Pill v={v} texto={textoPct(v, "que antes")} /> : null} />
             <Dato valor={formatearARS(d.ticket)} texto="ticket promedio" />
-            <Dato valor={String(d.cortes)} texto={`${d.cortes === 1 ? "corte" : "cortes"} ${NOMBRE[periodo]}`} />
+            <Dato valor={String(d.cortes)} texto={`${d.cortes === 1 ? "corte" : "cortes"} ${nombreDe(periodo, rotulo)}`} />
             <Dato valor={d.mejorHora === null ? "—" : `${d.mejorHora} h`} texto="tu hora más fuerte" />
           </div>
         </>

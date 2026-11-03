@@ -1,7 +1,7 @@
 -- SOLO PARA PRUEBAS LOCALES. Simula las piezas de Supabase que la migración necesita.
 -- NO se ejecuta en Supabase real (ahí ya existen).
 create schema if not exists auth;
-create table auth.users (id uuid primary key);
+create table auth.users (id uuid primary key, email text);
 create or replace function auth.uid() returns uuid language sql stable as
 $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 do $$ begin

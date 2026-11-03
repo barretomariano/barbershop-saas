@@ -188,3 +188,10 @@ export interface FilaCalor { dia_semana: number; hora: number; cantidad: number;
 export interface FilaRecurrencia { con_cliente: number; recurrentes: number; intervalo_dias: number | null; dormidos: number }
 export interface FilaGastoDia { dia: string; total: number }
 export interface FilaRentabilidadServicio { service_name: string; cantidad: number; vendido: number; para_local: number }
+
+// Cobros por día (migración 16): el barbero pide cobrar sus días y el dueño o encargado acepta o rechaza.
+export type EstadoCobro = "SIN_PEDIR" | "REQUESTED" | "PAID" | "REJECTED";
+export interface FilaCobro {
+  barber_membership_id: string; dia: string; cantidad: number; vendido: number; comision: number;
+  estado: EstadoCobro; monto_cobrado: number | null; entregado: number | null; motivo: string | null;
+}

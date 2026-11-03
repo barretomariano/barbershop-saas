@@ -2,7 +2,7 @@ import type { ModuloNegocio, Rol } from "./tipos";
 
 // La app tiene 4 pestañas fijas abajo. Agenda aparece solo si el módulo está encendido.
 export type Tab = "inicio" | "agenda" | "resumen" | "ajustes";
-export type SubResumen = "panorama" | "ventas" | "reportes" | "caja" | "gastos";
+export type SubResumen = "panorama" | "ventas" | "reportes" | "cobros" | "gastos";
 export type SubAjustes = "marca" | "clientes" | "servicios" | "equipo" | "comisiones" | "horarios" | "modulos" | "metas" | "apariencia" | "historial" | "ayuda";
 
 // Todo lugar al que puede llevar un widget o un botón.
@@ -10,11 +10,11 @@ export type Destino = "inicio" | "agenda" | SubResumen | "resumen" | "ajustes" |
 
 export interface Ubicacion { tab: Tab; sub: SubResumen | SubAjustes | null }
 
-const RESUMEN: SubResumen[] = ["panorama", "ventas", "reportes", "caja", "gastos"];
+const RESUMEN: SubResumen[] = ["panorama", "ventas", "cobros", "reportes", "gastos"];
 const AJUSTES: SubAjustes[] = ["marca", "clientes", "servicios", "equipo", "comisiones", "horarios", "modulos", "metas", "apariencia", "historial", "ayuda"];
 
 export function subResumenDisponibles(rol: Rol): SubResumen[] {
-  return rol === "BARBER" ? ["panorama", "ventas", "reportes"] : RESUMEN;
+  return rol === "BARBER" ? ["panorama", "ventas", "cobros", "reportes"] : RESUMEN;
 }
 
 export function subAjustesDisponibles(rol: Rol, modulos: ModuloNegocio[]): SubAjustes[] {

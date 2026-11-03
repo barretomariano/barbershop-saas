@@ -40,7 +40,7 @@ describe("widgets del rediseño", () => {
     expect(ids("resumen", "BARBER", ["CLIENTES"])).toContain("recurrencia");
   });
   it("el inicio abre con el resumen del mes y después las dos cápsulas principales", () => {
-    expect(widgetsFijos("inicio", "OWNER", []).map((w) => w.id).slice(0, 3)).toEqual(["resumen_mes", "ventas", "ganancia"]);
+    expect(widgetsFijos("inicio", "OWNER", []).map((w) => w.id).slice(0, 4)).toEqual(["resumen_mes", "cobros", "ventas", "ganancia"]);
   });
 });
 
@@ -141,9 +141,10 @@ describe("turnos", () => {
 });
 
 describe("widgets de gestión", () => {
-  it("las alertas son solo para dueño y encargado; la comisión es para todos", () => {
+  it("las alertas son solo para dueño y encargado; los cobros son para todos", () => {
     expect(widgetsFijos("inicio", "BARBER", []).map((w) => w.id)).not.toContain("alertas");
     expect(widgetsFijos("inicio", "MANAGER", []).map((w) => w.id)).toContain("alertas");
-    expect(widgetsOpcionales("inicio", "BARBER", []).map((w) => w.id)).toContain("comision");
+    expect(widgetsFijos("inicio", "BARBER", []).map((w) => w.id)).toContain("cobros");
+    expect(widgetsFijos("inicio", "OWNER", []).map((w) => w.id)).toContain("cobros");
   });
 });

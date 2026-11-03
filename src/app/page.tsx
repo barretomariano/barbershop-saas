@@ -19,6 +19,8 @@ import VentaModal, { type TurnoACobrar } from "@/components/VentaModal";
 import { Icono, type NombreIcono } from "@/components/ui";
 import { urlSoporte } from "@/lib/soporte";
 import { nombreCorto } from "@/lib/manifest";
+import { hayAvisoCobros } from "@/lib/cobros";
+import { leerVisto } from "@/lib/avisoCobros";
 import { mostrarBotonTurno, mostrarBotonVenta, pestanasVisibles, ubicar, type Destino, type SubAjustes, type SubResumen, type Tab } from "@/lib/navegacion";
 import { aplicarApariencia, CLAVE_MARCA, guardarLocal, leerMarcaLocal, leerPrefTema, marcaValida, MARCA_POR_DEFECTO, PREF_TEMA_POR_DEFECTO, serializarMarca, SUGERENCIAS, type Marca, type PrefTema } from "@/lib/tema";
 
@@ -142,6 +144,34 @@ function Panel({ userId }: { userId: string }) {
     document.querySelector<HTMLMetaElement>('meta[name="apple-mobile-web-app-title"]')?.setAttribute("content", nombreCorto(negocio.nombre));
   }, [equipo, negocio, userId]);
 
+  // Punto de aviso en Resumen > Cobros: pedidos sin decidir (dueño/encargado) o decisiones nuevas (barbero).
+  const [avisoCobros, setAvisoCobros] = useState(false);
+  useEffect(() => {
+    const miembro = equipo?.find((m) => m.user_id === userId);
+    if (!miembro || pausa) return;
+    const sb = getSupabase();
+    const gestionar = miembro.role !== "BARBER";
+    let vivo = true;
+    const revisar = () => {
+      if (gestionar) {
+        void sb.from("payout_days").select("id", { count: "exact", head: true }).eq("business_id", miembro.business_id).eq("status", "REQUESTED")
+          .then((r) => { if (vivo) setAvisoCobros(hayAvisoCobros({ gestion: true, pedidos: r.count ?? 0, ultimaDecision: null, visto: null })); });
+      } else {
+        void sb.from("payout_days").select("decided_at").eq("barber_membership_id", miembro.id).not("decided_at", "is", null)
+          .order("decided_at", { ascending: false }).limit(1)
+          .then((r) => {
+            const ultima = (r.data as { decided_at: string }[] | null)?.[0]?.decided_at ?? null;
+            if (vivo) setAvisoCobros(hayAvisoCobros({ gestion: false, pedidos: 0, ultimaDecision: ultima, visto: leerVisto(miembro.business_id, userId) }));
+          });
+      }
+    };
+    revisar();
+    const cada = window.setInterval(revisar, 60_000);
+    const alVolver = () => { if (document.visibilityState === "visible") revisar(); };
+    document.addEventListener("visibilitychange", alVolver);
+    return () => { vivo = false; window.clearInterval(cada); document.removeEventListener("visibilitychange", alVolver); };
+  }, [equipo, userId, pausa, refresco, tab, subResumen]);
+
   if (equipo === null) return <Mensaje texto="Cargando…" />;
   const yo = equipo.find((m) => m.user_id === userId);
   if (!yo && pausa) return <CuentaPausada nombre={pausa} />;
@@ -221,7 +251,7 @@ function Panel({ userId }: { userId: string }) {
         {activa === "agenda" && hayAgenda && (
           <Agenda yo={yo} equipo={equipo} hayClientes={hayClientes} refresco={refresco} abrirNuevo={nuevoTurno} onCobrar={(t) => setVenta({ turno: t })} />
         )}
-        {activa === "resumen" && <ResumenHub key={refresco} yo={yo} equipo={equipo} modulos={negocio.modulos} hayClientes={hayClientes} sub={subResumen} onSub={setSubResumen} irA={irA} />}
+        {activa === "resumen" && <ResumenHub key={refresco} yo={yo} equipo={equipo} modulos={negocio.modulos} hayClientes={hayClientes} sub={subResumen} onSub={setSubResumen} irA={irA} avisoCobros={avisoCobros} />}
         {activa === "ajustes" && (
           <AjustesHub yo={yo} equipo={equipo} negocio={negocio} sub={subAjustes} onSub={setSubAjustes} onCambio={cargar}
             pref={pref} marca={marca} onPref={setPref} onMarca={setMarca} />
@@ -245,7 +275,7 @@ function Panel({ userId }: { userId: string }) {
           {pestanas.map((p) => (
             <button key={p.id} className="nav-item" aria-current={activa === p.id ? "page" : undefined} onClick={() => irATab(p.id)}>
               <Icono nombre={ICONO_TAB[p.id]} tam={23} />
-              {p.texto}
+              {p.texto}{p.id === "resumen" && avisoCobros && !pausa && <span className="aviso" aria-label="Novedades en Cobros" />}
             </button>
           ))}
         </div>

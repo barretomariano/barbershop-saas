@@ -242,6 +242,52 @@ function rpc(nombre: string, a: Args): Resp {
         sueldos: suma(activos.filter((m) => m.commission_model === "SALARY"), "fixed_monthly"),
       }]);
     }
+    case "dias_cobro": {
+      const desde = String(a.p_desde).slice(0, 10), hasta = String(a.p_hasta).slice(0, 10);
+      const claves = new Map<string, Fila>();
+      for (const v of db().sales.filter((x) => x.status === "VALID")) {
+        const d = diaAR(String(v.sold_at));
+        if (d < desde || d > hasta) continue;
+        const k = `${v.barber_membership_id}|${d}`;
+        const f = claves.get(k) ?? { barber_membership_id: v.barber_membership_id, dia: d, cantidad: 0, vendido: 0, comision: 0, estado: "SIN_PEDIR", monto_cobrado: null, entregado: null, motivo: null };
+        f.cantidad = Number(f.cantidad) + 1; f.vendido = Number(f.vendido) + Number(v.amount);
+        if (v.commission_model === "PERCENT") f.comision = Number(f.comision) + Number(v.barber_amount);
+        claves.set(k, f);
+      }
+      for (const p of db().payout_days) {
+        const f = claves.get(`${p.barber_membership_id}|${p.day}`);
+        if (f) { f.estado = p.status; f.monto_cobrado = p.day_amount; f.entregado = p.paid_total; f.motivo = p.reject_reason; }
+      }
+      return ok([...claves.values()].sort((x, y) => String(y.dia).localeCompare(String(x.dia))));
+    }
+    case "ajuste_cobros":
+      return ok(db().memberships.filter((m) => m.role === "BARBER").map((m) => {
+        const pagos = db().payout_days.filter((p) => p.barber_membership_id === m.id && p.status === "PAID");
+        const hoyValen = db().sales.filter((v) => v.status === "VALID" && v.barber_membership_id === m.id && v.commission_model === "PERCENT" && pagos.some((p) => p.day === diaAR(String(v.sold_at))));
+        return { barber_membership_id: m.id, ajuste: suma(hoyValen, "barber_amount") - suma(pagos, "paid_total") };
+      }));
+    case "request_payout": {
+      const dias = (a.p_days as string[]) ?? [];
+      const yo = db().memberships.find((m) => m.role === "BARBER") ?? db().memberships[0];
+      for (const d of dias) {
+        const x = db().payout_days.find((p) => p.barber_membership_id === yo.id && p.day === d);
+        if (x) { x.status = "REQUESTED"; x.reject_reason = null; }
+        else db().payout_days.push({ id: nuevoId("pd"), business_id: DEMO_NEGOCIO_ID, barber_membership_id: yo.id, day: d, status: "REQUESTED", requested_at: new Date().toISOString(), decided_at: null, decided_by: null, reject_reason: null, day_amount: null, paid_total: null });
+      }
+      return ok(dias.length);
+    }
+    case "decide_payout": {
+      let total = 0;
+      for (const d of (a.p_days as string[]) ?? []) {
+        const monto = db().sales.filter((v) => v.status === "VALID" && v.barber_membership_id === a.p_membership && v.commission_model === "PERCENT" && diaAR(String(v.sold_at)) === d).reduce((t, v) => t + Number(v.barber_amount), 0);
+        let x = db().payout_days.find((p) => p.barber_membership_id === a.p_membership && p.day === d);
+        if (!x) { x = { id: nuevoId("pd"), business_id: DEMO_NEGOCIO_ID, barber_membership_id: a.p_membership, day: d, status: "REQUESTED", requested_at: new Date().toISOString() }; db().payout_days.push(x); }
+        x.decided_at = new Date().toISOString(); x.decided_by = DEMO_USER_ID;
+        if (a.p_accept) { x.status = "PAID"; x.day_amount = monto; x.paid_total = monto; x.reject_reason = null; total += monto; }
+        else { x.status = "REJECTED"; x.reject_reason = String(a.p_reason ?? ""); }
+      }
+      return ok(total);
+    }
     case "pendiente_liquidacion": {
       const desde = new Date(Date.now() - 15 * 86_400_000).toISOString();
       const hasta = new Date(`${String(a.p_upto)}T23:59:59-03:00`).toISOString();
